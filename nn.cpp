@@ -200,6 +200,7 @@ vvd calc_r_hL_x3(vvd &x, vvd &t) {
                 if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
                 else tmp[s][j] += t[s][k] / x[s][k];
             }
+            tmp[s][j] /= n;
         }
     }
     return tmp;
@@ -296,10 +297,17 @@ int main() {
 
     vvd Delta3;
     admMultiMatrix(Delta3, r_hL_x3, r_h3_a3);
-
     cout << "del3" << endl;
     showMatrix(Delta3);
-    
+    vvd r_L_w3, tx2 = x2;
+    tMatrix(tx2);
+    cout << "t x2" << endl;
+    showMatrix(tx2);
+    multiMatrix(r_L_w3, tx2, Delta3);
+    cout << "L / W3" << endl;
+    showMatrix(r_L_w3);
+
+
     
 
 
