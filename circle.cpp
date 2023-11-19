@@ -1,0 +1,306 @@
+/*
+入力(p, q)が
+中心原点，半径３の円の
+内側にあるか外側にあるかを判定する
+ニューラルネットワーク
+*/
+#include <iostream>
+#include <stdlib.h>
+#include <vector>
+#include <algorithm>
+#include <set>
+#include <math.h>
+#include <string>
+#include <random>
+
+using namespace std;
+
+#define pi 3.14159265358979323846
+#define yes "Yes"
+#define no "No"
+#define yesno(bool) if(bool){cout<<"Yes"<<endl;}else{cout<<"No"<<endl;}
+#define tp() cout << "here~~" << endl
+
+using vd = vector<double>;
+using vvd = vector<vector<double>>;
+
+
+double h_sigmoid(double x) {
+    return 1/(1+exp(-x));
+}
+double h_tash(double x) {
+    return (exp(x)-exp(-x)) / (exp(x)+exp(-x));
+}
+double h_ReLU(double x) {
+    return (x > 0) ? x : 0;
+}
+void h_ReLUMatrix(vvd &x) {
+    int n = x.size(), m = x[0].size();
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            x[i][j] = h_ReLU(x[i][j]);
+        }
+    }
+}
+void showMatrix(vvd &a) {
+    int n = a.size(), m = a[0].size();
+    for (int j=0; j<m; ++j) cout << "--";
+    cout << endl;
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            cout << a[i][j] << ' ';
+        }
+        cout << endl;
+    }
+    for (int j=0; j<m; ++j) cout << "--";
+    cout << endl;
+}
+vvd softMax(vvd &x) {
+    int n = x.size();
+    int m = x[0].size();
+    vvd y = x;
+    for (int i=0; i<n; ++i) {
+        double mx = *max_element(y[i].begin(), y[i].end());
+        double deno = 0;
+        for (int j=0; j<m; ++j) {
+            y[i][j] -= mx;
+            deno += exp(y[i][j]);
+        }
+        for (int j=0; j<m; ++j) {
+            y[i][j] = exp(y[i][j]) / deno;
+        }
+    }
+    return y;
+}
+double crossEntropy(vvd &y, vvd &t) {
+    int n = y.size(), m = y[0].size();
+    double sum = 0;
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            sum += t[i][j] * log(y[i][j]);
+        }
+    }
+    return -sum/n;
+}
+// c = a * b
+void multiMatrix(vvd &c, vvd &a, vvd &b) {
+    int n = a.size(), m = b.size(), l = b[0].size();
+    c.assign(n, vd(l, 0));
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<l; ++j) {
+            for (int k=0; k<m; ++k) {
+                c[i][j] += a[i][k] * b[k][j];
+            }
+        }
+    }
+}
+// c = a .* b admal
+void admMultiMatrix(vvd &c, vvd &a, vvd &b) {
+    int n = a.size(), m = a[0].size();
+    c.assign(n, vd(m));
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            c[i][j] = a[i][j] * b[i][j];
+        }
+    }
+}
+// c = a + b
+void addMatrix(vvd& c, vvd &a, vvd &b) {
+    if (a.size() != b.size() || a[0].size() != b[0].size()) {
+        cout << "The matrix sizes are different." << endl;
+        return;
+    }
+    int n = a.size(), m = a[0].size();
+    c.assign(n, vd(m, 0));
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            c[i][j] += a[i][j] + b[i][j];
+        }
+    }
+}
+void tMatrix(vvd &a) {
+    int n = a.size(), m = a[0].size();
+    vvd t = a;
+    a.assign(m, vd(n));
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            a[j][i] = t[i][j];
+        }
+    }
+}
+bool judgeTerm(double x, double y){ return (x*x + y*y < 9) ? true : false;}
+void makeData(vvd &x, int n, int seed=0) {
+    //条件を満たす点と満たさない点をｎ個ずつ作る
+    //rd()は実行毎に異なる
+    //rand()は実行毎に同じ
+    random_device rd;
+    // mt19937 gen(rd());//random
+    mt19937 gen(seed);//seed
+    uniform_real_distribution<> dist(-6, 6);
+    x.assign(2*n, vd(2, 0));
+    int id = 0;
+    while(id < n) {
+        double a, b;
+        a = dist(gen);
+        b = dist(gen);
+        if (judgeTerm(a, b)) {
+            x[id][0] = a;
+            x[id][1] = b;
+            ++id;
+        }
+    }
+    while(id < n*2) {
+        double a, b;
+        a = dist(gen);
+        b = dist(gen);
+        if (!judgeTerm(a, b)) {
+            x[id][0] = a;
+            x[id][1] = b;
+            ++id;
+        }
+    }
+}
+
+vvd calc_r_hL_x3(vvd &x, vvd &t) {
+    int n = x.size(), m = x[0].size();
+    double ips = 0.01, fLup, fLdown;
+    vvd tmp(n, vd(m, 0));
+    for (int s=0; s<n; ++s) {
+        for (int j=0; j<m; ++j) {
+            tmp[s][j] = -t[s][j] / x[s][j];
+            for (int k=0; k<m; ++k) {
+                if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
+                else tmp[s][j] += t[s][k] / x[s][k];
+            }
+            tmp[s][j] /= n;
+        }
+    }
+    return tmp;
+}
+vvd calc_r_h3_a3 (vvd &a, vvd &x) {
+    int n = a.size(), m = a[0].size();
+    vvd tmp(n, vd(m, 0));
+    for (int s=0; s<n; ++s) {
+        for (int j=0; j<m; ++j) {
+            tmp[s][j] = x[s][j]*(1-x[s][j]);
+        }
+    }
+    return tmp;
+}
+
+vvd calc_r_h2_a2 (vvd &a, vvd &x) {
+    int n = a.size(), m = a[0].size();
+    vvd tmp(n, vd(m, 0));
+    for (int s=0; s<n; ++s) {
+        for (int j=0; j<m; ++j) {
+            if (a[s][j] > 0) tmp[s][j] = 1;
+        }
+    }
+    return tmp;
+}
+
+void updateWeights(vvd &w, vvd &rw, double eta) {
+    if (!(w.size() == rw.size() && w[0].size() == rw[0].size())) {
+        cout << "the sizes are different" << endl;
+    }
+    int n = w.size(), m = w[0].size();
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            w[i][j] -= eta * rw[i][j];
+        }
+    }
+}
+
+
+
+
+int main() {
+    vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3;
+    vvd r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1;
+    double eta = 0.01;
+    
+    w1 = {{-0.35, -0.52, -0.96}, {-0.88, -0.76, -0.086}};
+    w2 = {{-0.47, -0.32, 0.93}, {0.47, -0.015, 0.88}, {-0.13, -0.22, 1.1}};
+    w3 = {{-1.2, 0.47}, {0.16, 0.75}, {-1.8, -0.85}};
+    // w1 = {{1, 6, 7}, {-1, -4, 1}};
+    // w2 = {{2, 5, 8}, {-2, -5, 1}, {1, 2, 3}};
+    // w3 = {{3, 4}, {1, -1}, {-6, -7}};
+    int n = 1000;
+
+
+    //教師データの作成 {1,0}内側
+    vvd t;
+    vd tmp = {1, 0};//inner
+    for (int i=0; i<n/2; ++i) t.push_back(tmp);
+    tmp = {0, 1};//outer
+    for (int i=0; i<n/2; ++i) t.push_back(tmp);
+    
+    makeData(x0, n/2);
+
+    for (int i=0; i<1000; ++i) {
+        //forward propagation
+        multiMatrix(a1, x0, w1);//a1 = w1 * x0
+        h_ReLUMatrix(a1);
+        x1 = a1;
+        multiMatrix(a2, x1, w2);//a2 = w2 * x1
+        h_ReLUMatrix(a2);
+        x2 = a2;
+        multiMatrix(a3, x2, w3);//a1 = w1 * x0
+        x3 = softMax(a3);
+        // cout << "cross entropy " << i << ' ';
+        // cout << crossEntropy(x3, t) << endl;
+
+        if (i == 0) {
+            cout << "cross entropy ";
+            cout << crossEntropy(x3, t) << endl;
+            // cout << "last x3" << endl;
+            // showMatrix(x3);
+            // cout << "teacher" << endl;
+            // showMatrix(t);
+        }
+
+        //back propagation
+        r_hL_x3 = calc_r_hL_x3(x3, t);
+        r_h3_a3 = calc_r_h3_a3(a3, x3);
+        admMultiMatrix(Delta3, r_hL_x3, r_h3_a3);
+        tx2 = x2;
+        tMatrix(tx2);
+        multiMatrix(r_L_w3, tx2, Delta3);
+        r_h2_a2 = calc_r_h2_a2(a2, x2);
+        tw3 = w3;
+        tMatrix(tw3);
+        multiMatrix(tmp2, Delta3, tw3);
+        admMultiMatrix(Delta2, r_h2_a2, tmp2);
+        tx1 = x1;
+        tMatrix(tx1);
+        multiMatrix(r_L_w2, tx1, Delta2);
+        r_h1_a1 = calc_r_h2_a2(a1, x1);
+        tw2 = w2;
+        tMatrix(tw2);
+        multiMatrix(tmp3, Delta2, tw2);
+        admMultiMatrix(Delta1, r_h1_a1, tmp3);
+        tx0 = x0;
+        tMatrix(tx0);
+        multiMatrix(r_L_w1, tx0, Delta1);
+
+        updateWeights(w1, r_L_w1, eta);
+        updateWeights(w2, r_L_w2, eta);
+        updateWeights(w3, r_L_w3, eta);
+    }
+    
+    cout << "cross entropy ";
+    cout << crossEntropy(x3, t) << endl;
+    cout << "last x3" << endl;
+    showMatrix(x3);
+    cout << "teacher" << endl;
+    showMatrix(t);
+
+}
+
+
+/*
+
+*/
+
+
+ 
