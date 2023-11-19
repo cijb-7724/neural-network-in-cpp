@@ -242,6 +242,7 @@ void updateWeights(vvd &w, vvd &rw, double eta) {
 
 int main() {
     vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3;
+    double eta = 0.1;
     
     w1 = {{-0.35, -0.52, -0.96}, {-0.88, -0.76, -0.086}};
     w2 = {{-0.47, -0.32, 0.93}, {0.47, -0.015, 0.88}, {-0.13, -0.22, 1.1}};
@@ -387,7 +388,150 @@ int main() {
     multiMatrix(r_L_w1, tx0, Delta1);
     cout << "L / W1" << endl;
     showMatrix(r_L_w1);
-    //ok?
+    //ok
+
+    updateWeights(w1, r_L_w1, eta);
+    updateWeights(w2, r_L_w2, eta);
+    updateWeights(w3, r_L_w3, eta);
+
+
+
+    ///////////////////////////////////////
+     cout << "x0 = " << endl;
+    showMatrix(x0);
+    cout << "w1 = " << endl;
+    showMatrix(w1);
+    cout << "w2 = " << endl;
+    showMatrix(w2);
+    cout << "w3 = " << endl;
+    showMatrix(w3);
+
+    multiMatrix(a1, x0, w1);//a1 = w1 * x0
+
+    cout << "a1 = " << endl;
+    showMatrix(a1);
+
+    h_ReLUMatrix(a1);
+    x1 = a1;
+
+    cout << "x1 = " << endl;
+    showMatrix(x1);
+
+    multiMatrix(a2, x1, w2);//a2 = w2 * x1
+
+    cout << "a2 = " << endl;
+    showMatrix(a2);
+
+    h_ReLUMatrix(a2);
+    x2 = a2;
+
+    cout << "x2 = " << endl;
+    showMatrix(a2);
+
+    multiMatrix(a3, x2, w3);//a1 = w1 * x0
+
+    cout << "a3 = " << endl;
+    showMatrix(a3);
+
+    x3 = softMax(a3);
+
+    cout << "x3 = " << endl;
+    showMatrix(x3);
+
+    cout << "teacher = " << endl;
+    showMatrix(t);
+
+    cout << "cross entropy ";
+    cout << crossEntropy(x3, t) << endl;
+
+
+    //////////////////////////////////////////////2nd backpropagation
+    r_hL_x3 = calc_r_hL_x3(x3, t);
+    r_h3_a3 = calc_r_h3_a3(a3, x3);
+    
+    admMultiMatrix(Delta3, r_hL_x3, r_h3_a3);
+    
+    tx2 = x2;
+    tMatrix(tx2);
+    multiMatrix(r_L_w3, tx2, Delta3);
+    
+    //ok
+
+    r_h2_a2 = calc_r_h2_a2(a2, x2);
+    tw3 = w3;
+    tMatrix(tw3);
+    multiMatrix(tmp2, Delta3, tw3);
+    admMultiMatrix(Delta2, r_h2_a2, tmp2);
+    tx1 = x1;
+    tMatrix(tx1);
+    multiMatrix(r_L_w2, tx1, Delta2);
+    
+    //ok
+
+    r_h1_a1 = calc_r_h2_a2(a1, x1);
+    tw2 = w2;
+    tMatrix(tw2);
+    multiMatrix(tmp3, Delta2, tw2);
+    admMultiMatrix(Delta1, r_h1_a1, tmp3);
+    tx0 = x0;
+    tMatrix(tx0);
+    multiMatrix(r_L_w1, tx0, Delta1);
+    
+    //ok
+
+    updateWeights(w1, r_L_w1, eta);
+    updateWeights(w2, r_L_w2, eta);
+    updateWeights(w3, r_L_w3, eta);
+    /////////////////////////////////////////////////////////3rd jundenpa
+    cout << "x0 = " << endl;
+    showMatrix(x0);
+    cout << "w1 = " << endl;
+    showMatrix(w1);
+    cout << "w2 = " << endl;
+    showMatrix(w2);
+    cout << "w3 = " << endl;
+    showMatrix(w3);
+
+    multiMatrix(a1, x0, w1);//a1 = w1 * x0
+
+    cout << "a1 = " << endl;
+    showMatrix(a1);
+
+    h_ReLUMatrix(a1);
+    x1 = a1;
+
+    cout << "x1 = " << endl;
+    showMatrix(x1);
+
+    multiMatrix(a2, x1, w2);//a2 = w2 * x1
+
+    cout << "a2 = " << endl;
+    showMatrix(a2);
+
+    h_ReLUMatrix(a2);
+    x2 = a2;
+
+    cout << "x2 = " << endl;
+    showMatrix(a2);
+
+    multiMatrix(a3, x2, w3);//a1 = w1 * x0
+
+    cout << "a3 = " << endl;
+    showMatrix(a3);
+
+    x3 = softMax(a3);
+
+    cout << "x3 = " << endl;
+    showMatrix(x3);
+
+    cout << "teacher = " << endl;
+    showMatrix(t);
+
+    cout << "cross entropy ";
+    cout << crossEntropy(x3, t) << endl;
+
+
+    
 
 
     
