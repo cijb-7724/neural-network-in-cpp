@@ -207,7 +207,6 @@ vvd calc_r_hL_x3(vvd &x, vvd &t) {
 }
 vvd calc_r_h3_a3 (vvd &a, vvd &x) {
     int n = a.size(), m = a[0].size();
-    double ips = 0.000001, fLup, fLdown;
     vvd tmp(n, vd(m, 0));
     for (int s=0; s<n; ++s) {
         for (int j=0; j<m; ++j) {
@@ -217,6 +216,28 @@ vvd calc_r_h3_a3 (vvd &a, vvd &x) {
     return tmp;
 }
 
+vvd calc_r_h2_a2 (vvd &a, vvd &x) {
+    int n = a.size(), m = a[0].size();
+    vvd tmp(n, vd(m, 0));
+    for (int s=0; s<n; ++s) {
+        for (int j=0; j<m; ++j) {
+            if (a[s][j] > 0) tmp[s][j] = 1;
+        }
+    }
+    return tmp;
+}
+
+void updateWeights(vvd &w, vvd &rw, double eta) {
+    if (!(w.size() == rw.size() && w[0].size() == rw[0].size())) {
+        cout << "the sizes are different" << endl;
+    }
+    int n = w.size(), m = w[0].size();
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            w[i][j] -= eta * rw[i][j];
+        }
+    }
+}
 
 
 int main() {
@@ -283,7 +304,7 @@ int main() {
     cout << "teacher = " << endl;
     showMatrix(t);
 
-    
+    cout << "cross entropy ";
     cout << crossEntropy(x3, t) << endl;
 
     //back propagation
@@ -299,13 +320,74 @@ int main() {
     admMultiMatrix(Delta3, r_hL_x3, r_h3_a3);
     cout << "del3" << endl;
     showMatrix(Delta3);
+
     vvd r_L_w3, tx2 = x2;
     tMatrix(tx2);
+
     cout << "t x2" << endl;
     showMatrix(tx2);
+
     multiMatrix(r_L_w3, tx2, Delta3);
     cout << "L / W3" << endl;
     showMatrix(r_L_w3);
+    //ok
+
+
+    vvd r_h2_a2 = calc_r_h2_a2(a2, x2);
+    cout << "h2 / a2" << endl;
+    showMatrix(r_h2_a2);
+
+    vvd tw3 = w3;
+    tMatrix(tw3);
+    cout << "t w3" << endl;
+    showMatrix(tw3);
+
+    vvd tmp2;
+    multiMatrix(tmp2, Delta3, tw3);
+
+    vvd Delta2;
+    admMultiMatrix(Delta2, r_h2_a2, tmp2);
+    cout << "del2" << endl;
+    showMatrix(Delta2);
+
+    vvd tx1 = x1;
+    tMatrix(tx1);
+    cout << "t x1" << endl;
+    showMatrix(tx1);
+
+    vvd r_L_w2;
+    multiMatrix(r_L_w2, tx1, Delta2);
+    cout << "L / W2" << endl;
+    showMatrix(r_L_w2);
+    //ok
+
+    vvd r_h1_a1 = calc_r_h2_a2(a1, x1);
+    cout << "h1 / a1" << endl;
+    showMatrix(r_h1_a1);
+
+    vvd tw2 = w2;
+    tMatrix(tw2);
+    cout << "t w2" << endl;
+    showMatrix(tw2);
+
+    vvd tmp3;
+    multiMatrix(tmp3, Delta2, tw2);
+
+    vvd Delta1;
+    admMultiMatrix(Delta1, r_h1_a1, tmp3);
+    cout << "del1" << endl;
+    showMatrix(Delta1);
+
+    vvd tx0 = x0;
+    tMatrix(tx0);
+    cout << "t x0" << endl;
+    showMatrix(tx0);
+
+    vvd r_L_w1;
+    multiMatrix(r_L_w1, tx0, Delta1);
+    cout << "L / W1" << endl;
+    showMatrix(r_L_w1);
+    //ok?
 
 
     
