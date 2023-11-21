@@ -11,6 +11,7 @@
 #include <set>
 #include <math.h>
 #include <string>
+#include <fstream>
 #include <random>
 
 using namespace std;
@@ -24,6 +25,14 @@ using namespace std;
 using vd = vector<double>;
 using vvd = vector<vector<double>>;
 
+random_device rd;
+long long seed = 0;//rd()
+mt19937 engine(seed);
+
+double gaussianDistribution (double mu, double sig) {
+    normal_distribution <> dist(mu, sig);
+    return dist(engine);
+}
 
 double h_sigmoid(double x) {
     return 1/(1+exp(-x));
@@ -160,6 +169,14 @@ void makeData(vvd &x, int n, int seed=0) {
         }
     }
 }
+void makeInitialValue(vvd &table, double mu, double sig) {
+    int n = table.size(), m = table[0].size();
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            table[i][j] = gaussianDistribution(mu, sig);
+        }
+    }
+}
 
 vvd calc_r_hL_x3(vvd &x, vvd &t) {
     int n = x.size(), m = x[0].size();
@@ -170,7 +187,7 @@ vvd calc_r_hL_x3(vvd &x, vvd &t) {
             tmp[s][j] = -t[s][j] / x[s][j];
             for (int k=0; k<m; ++k) {
                 if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
-                else tmp[s][j] += t[s][k] / x[s][k];
+                else tmp[s][j] += t[s][k] / (x[s][k]+1e-6);
             }
             tmp[s][j] /= n;
         }
@@ -214,19 +231,45 @@ void updateWeights(vvd &w, vvd &rw, double eta) {
 
 
 
+
 int main() {
     vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
     vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1;
     double eta = 0.01;
     
-    w1 = {{-0.35, -0.52, -0.96}, {-0.88, -0.76, -0.086}};
-    w2 = {{-0.47, -0.32, 0.93}, {0.47, -0.015, 0.88}, {-0.13, -0.22, 1.1}};
-    w3 = {{-1.2, 0.47}, {0.16, 0.75}, {-1.8, -0.85}};
-    int n = 100;
+    // w1 = {{-0.35, -0.52, -0.96}, {-0.88, -0.76, -0.086}};
+    // w2 = {{-0.47, -0.32, 0.93}, {0.47, -0.015, 0.88}, {-0.13, -0.22, 1.1}};
+    // w3 = {{-1.2, 0.47}, {0.16, 0.75}, {-1.8, -0.85}};
+    w1.assign(2, vd(3, 0));
+    w2.assign(3, vd(3, 0));
+    w3.assign(3, vd(2, 0));
+    makeInitialValue(w1, 0, 2/sqrt(2));
+    makeInitialValue(w2, 0, 2/sqrt(3));
+    makeInitialValue(w3, 0, 2/sqrt(3));
+    b1.assign(1, vd(3, 0));
+    b2.assign(1, vd(3, 0));
+    b3.assign(1, vd(2, 0));
+    makeInitialValue(b1, 0, 2/sqrt(3));
+    makeInitialValue(b2, 0, 2/sqrt(3));
+    makeInitialValue(b3, 0, 2/sqrt(2));
+
+    cout << "w" << endl;
+    showMatrix(w1);
+    showMatrix(w2);
+    showMatrix(w3);
+
+    cout << "b" << endl;
+    showMatrix(b1);
+    showMatrix(b2);
+    showMatrix(b3);
+    
+    // return 0;
+    
+    
+    
+    int n = 10;
     //b must be difined
-    b1 = {{0, 0, 0}};
-    b2 = {{0, 0, 0}};
-    b3 = {{0, 0}};
+    
     
 
 
@@ -239,12 +282,13 @@ int main() {
     
     makeData(x0, n/2);
 
-    for (int i=0; i<1000; ++i) {
+    for (int i=0; i<400; ++i) {
         //forward propagation
         // multiMatrix(a1, x0, w1);
         //a1 = w1 * x0 + b1
-        multiMatrix(tmp1, x0, w1);
-        addMatrix(a1, tmp1, b1);
+        multiMatrix(a1, x0, w1);
+        // multiMatrix(tmp1, x0, w1);
+        // addMatrix(a1, tmp1, b1);
         h_ReLUMatrix(a1);
         x1 = a1;
         multiMatrix(a2, x1, w2);//a2 = w2 * x1
@@ -252,17 +296,23 @@ int main() {
         x2 = a2;
         multiMatrix(a3, x2, w3);//a1 = w1 * x0
         x3 = softMax(a3);
-        // cout << "cross entropy " << i << ' ';
-        // cout << crossEntropy(x3, t) << endl;
+        cout << "cross entropy " << i << ' ';
+        cout << crossEntropy(x3, t) << endl;
 
-        if (i == 0) {
-            cout << "cross entropy ";
-            cout << crossEntropy(x3, t) << endl;
-            // cout << "last x3" << endl;
-            // showMatrix(x3);
-            // cout << "teacher" << endl;
-            // showMatrix(t);
-        }
+        // if (i == 0) {
+        //     cout << "cross entropy ";
+        //     cout << crossEntropy(x3, t) << endl;
+        //     cout << "last x3" << endl;
+        //     showMatrix(x3);
+        //     cout << "teacher" << endl;
+        //     showMatrix(t);
+        // }
+        cout << "cross entropy ";
+        cout << crossEntropy(x3, t) << endl;
+        cout << "last x3" << endl;
+        showMatrix(x3);
+        cout << "teacher" << endl;
+        showMatrix(t);
 
         //back propagation
         r_hL_x3 = calc_r_hL_x3(x3, t);
@@ -298,7 +348,7 @@ int main() {
     cout << "last x3" << endl;
     showMatrix(x3);
     cout << "teacher" << endl;
-    showMatrix(t);
+    // showMatrix(t);
 
 }
 
