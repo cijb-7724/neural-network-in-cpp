@@ -215,17 +215,19 @@ void updateWeights(vvd &w, vvd &rw, double eta) {
 
 
 int main() {
-    vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3;
-    vvd r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1;
+    vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
+    vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1;
     double eta = 0.01;
     
     w1 = {{-0.35, -0.52, -0.96}, {-0.88, -0.76, -0.086}};
     w2 = {{-0.47, -0.32, 0.93}, {0.47, -0.015, 0.88}, {-0.13, -0.22, 1.1}};
     w3 = {{-1.2, 0.47}, {0.16, 0.75}, {-1.8, -0.85}};
-    // w1 = {{1, 6, 7}, {-1, -4, 1}};
-    // w2 = {{2, 5, 8}, {-2, -5, 1}, {1, 2, 3}};
-    // w3 = {{3, 4}, {1, -1}, {-6, -7}};
-    int n = 1000;
+    int n = 100;
+    //b must be difined
+    b1 = {{0, 0, 0}};
+    b2 = {{0, 0, 0}};
+    b3 = {{0, 0}};
+    
 
 
     //教師データの作成 {1,0}内側
@@ -239,7 +241,10 @@ int main() {
 
     for (int i=0; i<1000; ++i) {
         //forward propagation
-        multiMatrix(a1, x0, w1);//a1 = w1 * x0
+        // multiMatrix(a1, x0, w1);
+        //a1 = w1 * x0 + b1
+        multiMatrix(tmp1, x0, w1);
+        addMatrix(a1, tmp1, b1);
         h_ReLUMatrix(a1);
         x1 = a1;
         multiMatrix(a2, x1, w2);//a2 = w2 * x1
