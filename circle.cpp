@@ -228,7 +228,14 @@ void updateWeights(vvd &w, vvd &rw, double eta) {
     }
 }
 
-
+double calcAccuracyRate(vvd &y, vvd &t) {
+    int n = y.size();
+    double sum = 0;
+    for (int i=0; i<n; ++i) {
+        if (y[i][0] < y[i][1] && t[i][1] || y[i][0] > y[i][1] && t[i][0]) sum += 1;
+    }
+    return sum / n;
+}
 
 
 
@@ -267,7 +274,7 @@ int main() {
     
     
     
-    int n = 10;
+    int n = 100;
     //b must be difined
     
     
@@ -282,7 +289,7 @@ int main() {
     
     makeData(x0, n/2);
 
-    for (int i=0; i<400; ++i) {
+    for (int i=0; i<200; ++i) {
         //forward propagation
         // multiMatrix(a1, x0, w1);
         //a1 = w1 * x0 + b1
@@ -298,21 +305,23 @@ int main() {
         x3 = softMax(a3);
         cout << "cross entropy " << i << ' ';
         cout << crossEntropy(x3, t) << endl;
+        cout << "accuracy rate ";
+        cout << calcAccuracyRate(x3, t) << endl;
 
         // if (i == 0) {
-        //     cout << "cross entropy ";
-        //     cout << crossEntropy(x3, t) << endl;
+            // cout << "cross entropy ";
+            // cout << crossEntropy(x3, t) << endl;
         //     cout << "last x3" << endl;
         //     showMatrix(x3);
         //     cout << "teacher" << endl;
         //     showMatrix(t);
         // }
-        cout << "cross entropy ";
-        cout << crossEntropy(x3, t) << endl;
-        cout << "last x3" << endl;
-        showMatrix(x3);
-        cout << "teacher" << endl;
-        showMatrix(t);
+        // cout << "cross entropy ";
+        // cout << crossEntropy(x3, t) << endl;
+        // cout << "last x3" << endl;
+        // showMatrix(x3);
+        // cout << "teacher" << endl;
+        // showMatrix(t);
 
         //back propagation
         r_hL_x3 = calc_r_hL_x3(x3, t);
@@ -343,11 +352,11 @@ int main() {
         updateWeights(w3, r_L_w3, eta);
     }
     
-    cout << "cross entropy ";
-    cout << crossEntropy(x3, t) << endl;
-    cout << "last x3" << endl;
-    showMatrix(x3);
-    cout << "teacher" << endl;
+    // cout << "cross entropy ";
+    // cout << crossEntropy(x3, t) << endl;
+    // cout << "last x3" << endl;
+    // showMatrix(x3);
+    // cout << "teacher" << endl;
     // showMatrix(t);
 
 }
