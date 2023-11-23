@@ -376,6 +376,11 @@ https://playground.tensorflow.org/#activation=relu&batchSize=1&dataset=circle&re
     // x3 = softMax(a3);
     vvd x4;
     multiMatrix(x4, x3, w4);
+    /*
+    おそらくtensorflowのサイトのニューラルネットワークの出力層は
+    単に最後のノードに重みをかけて足し合わせてるだけ，
+    その後の値が，正なら円の中，０なら円の外という判定をしていると思う
+    */
 
     cout << "x4" << endl;
     showMatrix(x4);
@@ -383,9 +388,6 @@ https://playground.tensorflow.org/#activation=relu&batchSize=1&dataset=circle&re
     cout << "accuracy rate ";
     cout << calcAccuracyRatePM(x4, t) << endl;
 
-    // cout << "cross entropy";
-    // cout << crossEntropy(x3, t) << endl;
-    // cout << "accuracy rate ";
-    // cout << calcAccuracyRate(x3, t) << endl;
+    
 
 }
