@@ -287,11 +287,12 @@ void shuffleVVD(vvd &v, vector<int> &id) {
     v = tmp;
 }
 
+/*
 int main() {
     vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
     vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
     double eta = 0.01;
-    int n = 100;
+    int n = 1000;
 
     vector<int> id(n);
     for (int i=0; i<n; ++i) id[i] = i;
@@ -339,12 +340,12 @@ int main() {
     shuffleVVD(t, id);
     shuffleVVD(x0, id);
 
-    cout << "first x0" << endl;
-    showMatrix(x0);
-    cout << "t" << endl;
-    showMatrix(t);
+    // cout << "first x0" << endl;
+    // showMatrix(x0);
+    // cout << "t" << endl;
+    // showMatrix(t);
 
-    for (int i=0; i<10; ++i) {
+    for (int i=0; i<1000; ++i) {
     // for (int i=0; i<1000; ++i) {
         //forward propagation
         
@@ -382,42 +383,42 @@ int main() {
         // cout << "last x3" << endl;
         // showMatrix(x3);
 
-        if (i >= 1) {
-            cout << "w1" << endl;
-            showMatrix(w1);
-            cout << "w2" << endl;
-            showMatrix(w2);
-            cout << "w3" << endl;
-            showMatrix(w3);
+        // if (i >= 1) {
+        //     cout << "w1" << endl;
+        //     showMatrix(w1);
+        //     cout << "w2" << endl;
+        //     showMatrix(w2);
+        //     cout << "w3" << endl;
+        //     showMatrix(w3);
             
-            cout << "r L w1" << endl;
-            showMatrix(r_L_w1);
-            cout << "r L w2" << endl;
-            showMatrix(r_L_w2);
-            cout << "r L w3" << endl;
-            showMatrix(r_L_w3);
+        //     cout << "r L w1" << endl;
+        //     showMatrix(r_L_w1);
+        //     cout << "r L w2" << endl;
+        //     showMatrix(r_L_w2);
+        //     cout << "r L w3" << endl;
+        //     showMatrix(r_L_w3);
 
-            cout << "b1" << endl;
-            showMatrixB(b1);
-            cout << "b2" << endl;
-            showMatrixB(b2);
-            cout << "b3" << endl;
-            showMatrixB(b3);
+        //     cout << "b1" << endl;
+        //     showMatrixB(b1);
+        //     cout << "b2" << endl;
+        //     showMatrixB(b2);
+        //     cout << "b3" << endl;
+        //     showMatrixB(b3);
 
-            cout << "r L b1" << endl;
-            showMatrixB(r_L_b1);
-            cout << "r L b2" << endl;
-            showMatrixB(r_L_b2);
-            cout << "r L b3" << endl;
-            showMatrixB(r_L_b3);
+        //     cout << "r L b1" << endl;
+        //     showMatrixB(r_L_b1);
+        //     cout << "r L b2" << endl;
+        //     showMatrixB(r_L_b2);
+        //     cout << "r L b3" << endl;
+        //     showMatrixB(r_L_b3);
             
-            cout << i << " cross entropy";
-            cout << crossEntropy(x3, t) << endl;
-            cout << "accuracy rate ";
-            cout << calcAccuracyRate(x3, t) << endl;
-            cout << "last x3" << endl;
-            showMatrix(x3);
-        }
+        //     cout << i << " cross entropy";
+        //     cout << crossEntropy(x3, t) << endl;
+        //     cout << "accuracy rate ";
+        //     cout << calcAccuracyRate(x3, t) << endl;
+        //     cout << "last x3" << endl;
+        //     showMatrix(x3);
+        // }
         // cout << "teacher" << endl;
         // showMatrix(t);
 
@@ -494,11 +495,83 @@ int main() {
     // cout << calcAccuracyRate(x3, t) << endl;
 
 }
+*/
 
 
 /*
+https://playground.tensorflow.org/#activation=relu&batchSize=1&dataset=circle&regDataset=reg-plane&learningRate=0.03&regularizationRate=0&noise=0&networkShape=3,3,2&seed=0.75018&showTestData=false&discretize=false&percTrainData=90&x=true&y=true&xTimesY=false&xSquared=false&ySquared=false&cosX=false&sinX=false&cosY=false&sinY=false&collectStats=false&problem=classification&initZero=false&hideText=false
 
 */
 
 
- 
+ int main() {
+    vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
+    vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
+    double eta = 0.03;
+    int n = 1000;
+
+    vector<int> id(n);
+    for (int i=0; i<n; ++i) id[i] = i;
+    shuffle(id.begin(), id.end(), engine);
+    
+    w1 = {{0.74, 0.1, 1.8}, {-0.49, -1.8, 0.6}};
+    w2 = {{-0.73, 1.7, -0.23}, {1.4, -0.84, -0.026}, {1.4, -0.76, -0.059}};
+    w3 = {{1.4, 0.3}, {-0.27, -1.9}, {-1.1, 1.1}};
+    b1 = {{2.7, -0.62, -0.25}};
+    b2 = {{-1.1, 0, 1.8}};
+    b3 = {{-0.84, 1.0}};
+
+
+    expansionBias(b1, n);
+    expansionBias(b2, n);
+    expansionBias(b3, n);
+    
+    cout << "w" << endl;
+    showMatrix(w1);
+    showMatrix(w2);
+    showMatrix(w3);
+
+    cout << "b" << endl;
+    showMatrixB(b1);
+    showMatrixB(b2);
+    showMatrixB(b3);
+    
+    // return 0;
+
+    //教師データの作成 {1,0}内側
+    vvd t;
+    vd tmp = {1, 0};//inner
+    for (int i=0; i<n/2; ++i) t.push_back(tmp);
+    tmp = {0, 1};//outer
+    for (int i=0; i<n/2; ++i) t.push_back(tmp);
+    
+    makeData(x0, n/2);
+    cout << "x0" << endl;
+    showMatrix(x0);
+
+    //test
+    
+    //a1 = w1 * x0 + b1
+    multiMatrix(tmp1, x0, w1);
+    addMatrix(a1, tmp1, b1);
+    h_ReLUMatrix(a1);
+    x1 = a1;
+    //a2 = w2 * x1 + b2
+    multiMatrix(tmp1, x1, w2);
+    addMatrix(a2, tmp1, b2);
+    h_ReLUMatrix(a2);
+    x2 = a2;
+    //a3 = w3 * x2 + b3
+    multiMatrix(tmp1, x2, w3);
+    addMatrix(a3, tmp1, b3);
+    x3 = softMax(a3);
+
+    cout << "x3" << endl;
+    showMatrix(x3);
+
+    cout << "cross entropy";
+    cout << crossEntropy(x3, t) << endl;
+    cout << "accuracy rate ";
+    cout << calcAccuracyRate(x3, t) << endl;
+
+}
