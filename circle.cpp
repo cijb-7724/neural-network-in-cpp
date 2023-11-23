@@ -29,6 +29,13 @@ random_device rd;
 long long seed = 0;//rd()
 mt19937 engine(seed);
 
+
+//rd()は実行毎に異なる
+//rand()は実行毎に同じ
+// mt19937 gen(rd());//random
+mt19937 gen(seed);//seed
+uniform_real_distribution<> distCircle(-6, 6);
+
 double gaussianDistribution (double mu, double sig) {
     normal_distribution <> dist(mu, sig);
     return dist(engine);
@@ -140,18 +147,13 @@ void tMatrix(vvd &a) {
 bool judgeTerm(double x, double y){ return (x*x + y*y < 9) ? true : false;}
 void makeData(vvd &x, int n, int seed=0) {
     //条件を満たす点と満たさない点をｎ個ずつ作る
-    //rd()は実行毎に異なる
-    //rand()は実行毎に同じ
-    random_device rd;
-    // mt19937 gen(rd());//random
-    mt19937 gen(seed);//seed
-    uniform_real_distribution<> dist(-6, 6);
+    
     x.assign(2*n, vd(2, 0));
     int id = 0;
     while(id < n) {
         double a, b;
-        a = dist(gen);
-        b = dist(gen);
+        a = distCircle(gen);
+        b = distCircle(gen);
         if (judgeTerm(a, b)) {
             x[id][0] = a;
             x[id][1] = b;
@@ -160,8 +162,8 @@ void makeData(vvd &x, int n, int seed=0) {
     }
     while(id < n*2) {
         double a, b;
-        a = dist(gen);
-        b = dist(gen);
+        a = distCircle(gen);
+        b = distCircle(gen);
         if (!judgeTerm(a, b)) {
             x[id][0] = a;
             x[id][1] = b;
@@ -301,6 +303,8 @@ int main() {
     // showMatrix(b3);
     
     // return 0;
+
+    
     
     
     
@@ -317,10 +321,12 @@ int main() {
     for (int i=0; i<n/2; ++i) t.push_back(tmp);
     
     makeData(x0, n/2);
+    cout << "first x0" << endl;
+    showMatrix(x0);
 
-    for (int i=0; i<1000; ++i) {
+    for (int i=0; i<200; ++i) {
         //forward propagation
-        // multiMatrix(a1, x0, w1);
+        
         //a1 = w1 * x0 + b1
         multiMatrix(tmp1, x0, w1);
         addMatrix(a1, tmp1, b1);
@@ -335,10 +341,10 @@ int main() {
         multiMatrix(tmp1, x2, w3);
         addMatrix(a3, tmp1, b3);
         x3 = softMax(a3);
-        cout << "cross entropy " << i << ' ';
-        cout << crossEntropy(x3, t) << endl;
-        cout << "accuracy rate ";
-        cout << calcAccuracyRate(x3, t) << endl;
+        // cout << i << " cross entropy";
+        // cout << crossEntropy(x3, t) << endl;
+        // cout << "accuracy rate ";
+        // cout << calcAccuracyRate(x3, t) << endl;
 
         // if (i == 0) {
             // cout << "cross entropy ";
@@ -348,8 +354,10 @@ int main() {
         //     cout << "teacher" << endl;
         //     showMatrix(t);
         // }
-        // cout << "cross entropy ";
-        // cout << crossEntropy(x3, t) << endl;
+        cout << i << " cross entropy";
+        cout << crossEntropy(x3, t) << endl;
+        cout << "accuracy rate ";
+        cout << calcAccuracyRate(x3, t) << endl;
         // cout << "last x3" << endl;
         // showMatrix(x3);
         // cout << "teacher" << endl;
@@ -400,6 +408,33 @@ int main() {
     // showMatrix(x3);
     // cout << "teacher" << endl;
     // showMatrix(t);
+
+    //test
+    makeData(x0, n/2);
+
+
+    cout << "test x0" << endl;
+    showMatrix(x0);
+
+    //a1 = w1 * x0 + b1
+    multiMatrix(tmp1, x0, w1);
+    addMatrix(a1, tmp1, b1);
+    h_ReLUMatrix(a1);
+    x1 = a1;
+    //a2 = w2 * x1 + b2
+    multiMatrix(tmp1, x1, w2);
+    addMatrix(a2, tmp1, b2);
+    h_ReLUMatrix(a2);
+    x2 = a2;
+    //a3 = w3 * x2 + b3
+    multiMatrix(tmp1, x2, w3);
+    addMatrix(a3, tmp1, b3);
+    x3 = softMax(a3);
+
+    cout << "cross entropy";
+    cout << crossEntropy(x3, t) << endl;
+    cout << "accuracy rate ";
+    cout << calcAccuracyRate(x3, t) << endl;
 
 }
 
