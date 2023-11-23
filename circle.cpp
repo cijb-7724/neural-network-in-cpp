@@ -178,6 +178,18 @@ void makeInitialValue(vvd &table, double mu, double sig) {
     }
 }
 
+
+void expansionBias(vvd &b, int batch) {
+    vd tmp = b[0];
+    if (b.size() != 1) {
+        cout << "bias batch size error" << endl;
+        return ;
+    }
+    for (int i=0; i<batch-1; ++i) {
+        b.push_back(tmp);
+    }
+}
+
 vvd calc_r_hL_x3(vvd &x, vvd &t) {
     int n = x.size(), m = x[0].size();
     double ips = 0.01, fLup, fLdown;
@@ -216,6 +228,20 @@ vvd calc_r_h2_a2 (vvd &a, vvd &x) {
     return tmp;
 }
 
+void calc_r_L_b (vvd &rb, vvd &b, vvd &delta) {
+    int n = b.size(), m = b[0].size();
+    if (n != delta.size() || m != delta[0].size()) {
+        cout << "size is not match" << endl;
+    }
+    rb.assign(1, vd(m, 0));
+    for (int j=0; j<m; ++j) {
+        for (int i=0; i<n; ++i) {
+            rb[0][j] += delta[i][j];
+        }
+    }
+    expansionBias(rb, n);
+}
+
 void updateWeights(vvd &w, vvd &rw, double eta) {
     if (!(w.size() == rw.size() && w[0].size() == rw[0].size())) {
         cout << "the sizes are different" << endl;
@@ -238,11 +264,11 @@ double calcAccuracyRate(vvd &y, vvd &t) {
 }
 
 
-
 int main() {
     vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
-    vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1;
+    vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
     double eta = 0.01;
+    int n = 100;
     
     // w1 = {{-0.35, -0.52, -0.96}, {-0.88, -0.76, -0.086}};
     // w2 = {{-0.47, -0.32, 0.93}, {0.47, -0.015, 0.88}, {-0.13, -0.22, 1.1}};
@@ -259,23 +285,26 @@ int main() {
     makeInitialValue(b1, 0, 2/sqrt(3));
     makeInitialValue(b2, 0, 2/sqrt(3));
     makeInitialValue(b3, 0, 2/sqrt(2));
+    expansionBias(b1, n);
+    expansionBias(b2, n);
+    expansionBias(b3, n);
+    
 
     cout << "w" << endl;
     showMatrix(w1);
     showMatrix(w2);
     showMatrix(w3);
 
-    cout << "b" << endl;
-    showMatrix(b1);
-    showMatrix(b2);
-    showMatrix(b3);
+    // cout << "b" << endl;
+    // showMatrix(b1);
+    // showMatrix(b2);
+    // showMatrix(b3);
     
     // return 0;
     
     
     
-    int n = 100;
-    //b must be difined
+    
     
     
 
@@ -289,19 +318,22 @@ int main() {
     
     makeData(x0, n/2);
 
-    for (int i=0; i<200; ++i) {
+    for (int i=0; i<1000; ++i) {
         //forward propagation
         // multiMatrix(a1, x0, w1);
         //a1 = w1 * x0 + b1
-        multiMatrix(a1, x0, w1);
-        // multiMatrix(tmp1, x0, w1);
-        // addMatrix(a1, tmp1, b1);
+        multiMatrix(tmp1, x0, w1);
+        addMatrix(a1, tmp1, b1);
         h_ReLUMatrix(a1);
         x1 = a1;
-        multiMatrix(a2, x1, w2);//a2 = w2 * x1
+        //a2 = w2 * x1 + b2
+        multiMatrix(tmp1, x1, w2);
+        addMatrix(a2, tmp1, b2);
         h_ReLUMatrix(a2);
         x2 = a2;
-        multiMatrix(a3, x2, w3);//a1 = w1 * x0
+        //a3 = w3 * x2 + b3
+        multiMatrix(tmp1, x2, w3);
+        addMatrix(a3, tmp1, b3);
         x3 = softMax(a3);
         cout << "cross entropy " << i << ' ';
         cout << crossEntropy(x3, t) << endl;
@@ -327,6 +359,8 @@ int main() {
         r_hL_x3 = calc_r_hL_x3(x3, t);
         r_h3_a3 = calc_r_h3_a3(a3, x3);
         admMultiMatrix(Delta3, r_hL_x3, r_h3_a3);
+        calc_r_L_b(r_L_b3, b3, Delta3);
+
         tx2 = x2;
         tMatrix(tx2);
         multiMatrix(r_L_w3, tx2, Delta3);
@@ -335,6 +369,8 @@ int main() {
         tMatrix(tw3);
         multiMatrix(tmp2, Delta3, tw3);
         admMultiMatrix(Delta2, r_h2_a2, tmp2);
+        calc_r_L_b(r_L_b2, b2, Delta2);
+
         tx1 = x1;
         tMatrix(tx1);
         multiMatrix(r_L_w2, tx1, Delta2);
@@ -343,6 +379,8 @@ int main() {
         tMatrix(tw2);
         multiMatrix(tmp3, Delta2, tw2);
         admMultiMatrix(Delta1, r_h1_a1, tmp3);
+        calc_r_L_b(r_L_b1, b1, Delta1);
+
         tx0 = x0;
         tMatrix(tx0);
         multiMatrix(r_L_w1, tx0, Delta1);
@@ -350,6 +388,10 @@ int main() {
         updateWeights(w1, r_L_w1, eta);
         updateWeights(w2, r_L_w2, eta);
         updateWeights(w3, r_L_w3, eta);
+        updateWeights(b1, r_L_b1, eta);
+        updateWeights(b2, r_L_b2, eta);
+        updateWeights(b3, r_L_b3, eta);
+        
     }
     
     // cout << "cross entropy ";
