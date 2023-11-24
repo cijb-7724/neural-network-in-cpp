@@ -311,19 +311,64 @@ https://playground.tensorflow.org/#activation=relu&batchSize=1&dataset=circle&re
     vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
     vvd w4;
     double eta = 0.01;
-    int n = 10000;
+    int n = 100;
 
     vector<int> id(n);
     for (int i=0; i<n; ++i) id[i] = i;
     shuffle(id.begin(), id.end(), engine);
     
-    w1 = {{-0.64, 0.61, -0.11}, {-0.47, -0.25, 0.66}};
-    w2 = {{-0.49, -0.23, 0.71}, {-0.78, -0.3, -0.34}, {-0.79, -0.31, -0.39}};
-    w3 = {{0.15, 2}, {0.64, 0.64}, {-0.058, -0.52}};
-    w4 = {{0.42}, {2.1}};
-    b1 = {{-0.16, -0.025, -0.23}};
-    b2 = {{1.6, 0.64, -0.12}};
-    b3 = {{-0.000043, -0.00021}};
+    // w1 = {{-0.64, 0.61, -0.11}, {-0.47, -0.25, 0.66}};
+    // w2 = {{-0.49, -0.23, 0.71}, {-0.78, -0.3, -0.34}, {-0.79, -0.31, -0.39}};
+    // w3 = {{0.15, 2}, {0.64, 0.64}, {-0.058, -0.52}};
+    // w4 = {{0.42}, {2.1}};
+    // b1 = {{-0.16, -0.025, -0.23}};
+    // b2 = {{1.6, 0.64, -0.12}};
+    // b3 = {{-0.000043, -0.00021}};
+    
+    //終わってる重み
+    w1 = {{5.61992, -2.92881, -7.96769},
+        {-3.24392, -0.804257, 1.38286}};
+    w2 = {{-0.11935, 6.95828, 0.221925},
+        {-0.767134, 3.76157, -0.238456},
+        {-0.106959, 9.21648, -0.858818}};
+    w3 = {{-1.66258, -0.888791},
+        {8.04487, 9.4132},
+        {-0.410798, 0.492512}};
+    b1 = {{1.84318, 2.47344, 4.7852}};
+    b2 = {{0.619303, 1.76053, -0.579484}};
+    b3 = {{1.82168, -0.293917}};
+    /*
+w1
+------
+5.61992 -2.92881 -7.96769
+-3.24392 -0.804257 1.38286
+------
+w2
+------
+-0.11935 6.95828 0.221925
+-0.767134 3.76157 -0.238456
+-0.106959 9.21648 -0.858818
+------
+w3
+----
+-1.66258 -0.888791
+8.04487 9.4132
+-0.410798 0.492512
+----
+
+b1
+------
+1.84318 2.47344 4.7852
+------
+b2
+------
+0.619303 1.76053 -0.579484
+------
+b3
+----
+1.82168 -0.293917
+----
+*/
 
 
     expansionBias(b1, n);
@@ -334,7 +379,6 @@ https://playground.tensorflow.org/#activation=relu&batchSize=1&dataset=circle&re
     showMatrix(w1);
     showMatrix(w2);
     showMatrix(w3);
-    showMatrix(w4);
 
     cout << "b" << endl;
     showMatrixB(b1);
@@ -373,20 +417,39 @@ https://playground.tensorflow.org/#activation=relu&batchSize=1&dataset=circle&re
     addMatrix(a3, tmp1, b3);
     h_ReLUMatrix(a3);
     x3 = a3;//
-    // x3 = softMax(a3);
-    vvd x4;
-    multiMatrix(x4, x3, w4);
+    // vvd x4;
+    // multiMatrix(x4, x3, w4);
     /*
     おそらくtensorflowのサイトのニューラルネットワークの出力層は
     単に最後のノードに重みをかけて足し合わせてるだけ，
     その後の値が，正なら円の中，０なら円の外という判定をしていると思う
     */
 
-    cout << "x4" << endl;
-    showMatrix(x4);
+    // cout << "x4" << endl;
+    // showMatrix(x4);
 
+    // cout << "accuracy rate ";
+    // cout << calcAccuracyRatePM(x4, t) << endl;
+
+    ///////
+    // origin
+    x3 = softMax(a3);
+
+
+
+    cout << "x3" << endl;
+    showMatrix(x3);
+
+
+    double ans = crossEntropy(x3, t);
+    cout << "cross entropy" << endl;
+    cout << ans << endl;
     cout << "accuracy rate ";
-    cout << calcAccuracyRatePM(x4, t) << endl;
+    cout << calcAccuracyRate(x3, t) << endl;
+
+    double k = 1e-200;
+    cout << "k ";
+    cout << k*k << endl;
 
     
 

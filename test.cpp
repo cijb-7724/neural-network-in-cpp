@@ -162,8 +162,8 @@ void tMatrix(vvd &a) {
         }
     }
 }
-bool judgeTerm(double x, double y){ return (x*x + y*y < 9) ? true : false;}
-// bool judgeTerm(double x, double y){ return (y > x*x) ? true : false;}
+// bool judgeTerm(double x, double y){ return (x*x + y*y < 9) ? true : false;}
+bool judgeTerm(double x, double y){ return (y > x) ? true : false;}
 void makeData(vvd &x, int n, int seed=0) {
     //条件を満たす点と満たさない点をｎ個ずつ作る
     
@@ -328,7 +328,7 @@ void outputTextFile2d(vvd &v, string s) {
 int main() {
     vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
     vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
-    double eta = 0.01;
+    double eta = 0.1;
     int n = 100;
 
     vector<int> id(n);
@@ -403,62 +403,10 @@ int main() {
         multiMatrix(tmp1, x2, w3);
         addMatrix(a3, tmp1, b3);
         x3 = softMax(a3);
-        // cout << i << " cross entropy";
-        // cout << crossEntropy(x3, t) << endl;
-        // cout << "accuracy rate ";
-        // cout << calcAccuracyRate(x3, t) << endl;
-
-        // if (i == 0) {
-            // cout << "cross entropy ";
-            // cout << crossEntropy(x3, t) << endl;
-        //     cout << "last x3" << endl;
-        //     showMatrix(x3);
-        //     cout << "teacher" << endl;
-        //     showMatrix(t);
-        // }
         cout << i << " cross entropy ";
         cout << crossEntropy(x3, t) << endl;
         cout << "accuracy rate ";
         cout << calcAccuracyRate(x3, t) << endl;
-        // cout << "last x3" << endl;
-        // showMatrix(x3);
-
-        // if (i >= 118) {
-        //     cout << "w1" << endl;
-        //     showMatrix(w1);
-        //     cout << "w2" << endl;
-        //     showMatrix(w2);
-        //     cout << "w3" << endl;
-        //     showMatrix(w3);
-            
-        //     cout << "r L w1" << endl;
-        //     showMatrix(r_L_w1);
-        //     cout << "r L w2" << endl;
-        //     showMatrix(r_L_w2);
-        //     cout << "r L w3" << endl;
-        //     showMatrix(r_L_w3);
-
-        //     cout << "b1" << endl;
-        //     showMatrixB(b1);
-        //     cout << "b2" << endl;
-        //     showMatrixB(b2);
-        //     cout << "b3" << endl;
-        //     showMatrixB(b3);
-
-        //     cout << "r L b1" << endl;
-        //     showMatrixB(r_L_b1);
-        //     cout << "r L b2" << endl;
-        //     showMatrixB(r_L_b2);
-        //     cout << "r L b3" << endl;
-        //     showMatrixB(r_L_b3);
-            
-        //     // cout << i << " cross entropy";
-        //     // cout << crossEntropy(x3, t) << endl;
-        //     // cout << "accuracy rate ";
-        //     // cout << calcAccuracyRate(x3, t) << endl;
-        //     cout << "last x3" << endl;
-        //     showMatrix(x3);
-        // }
 
         //back propagation
         r_hL_x3 = calc_r_hL_x3(x3, t);
@@ -498,49 +446,10 @@ int main() {
         updateWeights(b3, r_L_b3, eta);
         
     }
-    
-    // cout << "cross entropy ";
-    // cout << crossEntropy(x3, t) << endl;
-    // cout << "last x3" << endl;
-    // showMatrix(x3);
-    // cout << "teacher" << endl;
-    // showMatrix(t);
-
-    // test
-    // makeData(x0, n/2);
-
-    // cout << "test x0" << endl;
-    // showMatrix(x0);
-
-    // //a1 = w1 * x0 + b1
-    // multiMatrix(tmp1, x0, w1);
-    // addMatrix(a1, tmp1, b1);
-    // h_ReLUMatrix(a1);
-    // x1 = a1;
-    // //a2 = w2 * x1 + b2
-    // multiMatrix(tmp1, x1, w2);
-    // addMatrix(a2, tmp1, b2);
-    // h_ReLUMatrix(a2);
-    // x2 = a2;
-    // //a3 = w3 * x2 + b3
-    // multiMatrix(tmp1, x2, w3);
-    // addMatrix(a3, tmp1, b3);
-    // x3 = softMax(a3);
-
-    // cout << "cross entropy";
-    // cout << crossEntropy(x3, t) << endl;
-    // cout << "accuracy rate ";
-    // cout << calcAccuracyRate(x3, t) << endl;
-
 }
 
 
 /*
-
-loop 81
-
-w1 = 2.329
-rw1 = -2.796
 
 
 */
