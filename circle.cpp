@@ -26,7 +26,8 @@ using vd = vector<double>;
 using vvd = vector<vector<double>>;
 
 random_device rd;
-long long seed = 0;//rd()
+// long long seed = 0;//rd()
+long long seed = rd();
 mt19937 engine(seed);
 
 double gaussianDistribution (double mu, double sig) {
@@ -35,7 +36,6 @@ double gaussianDistribution (double mu, double sig) {
 }
 //rd()は実行毎に異なる
 //rand()は実行毎に同じ
-// mt19937 gen(rd());//random
 mt19937 gen(seed);//seed
 uniform_real_distribution<> distCircle(-6, 6);
 
@@ -109,7 +109,7 @@ double crossEntropy(vvd &y, vvd &t) {
             } else if (y[i][j] < 0) {
                 cout << "log -x !!!!!!!!!!!!!!!!" << endl;
             }
-            if (y[i][j] == 0) y[i][j] += 1e-5;
+            if (y[i][j] <= 0) y[i][j] = 1e-5;
             if (t[i][j]) sum += t[i][j] * log(y[i][j]);
         }
     }
@@ -292,7 +292,36 @@ void shuffleVVD(vvd &v, vector<int> &id) {
     }
     v = tmp;
 }
+#include <fstream>
+void outputfile(vvd &x) {
+    int n = x.size(), m = x[0].size();
+    string fname1 = "in.txt";
+    string fname2 = "out.txt";
+    ofstream outputFile (fname1);
+    ofstream outputFile2 (fname2);
+    
 
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            if (i < n/2) {
+                outputFile << x[i][j];
+                if (j != m-1) outputFile << " ";
+            } else {
+                outputFile2 << x[i][j];
+                if (j != m-1) outputFile2 << " ";
+            }
+            
+        }
+        if (i < n/2) {
+            outputFile << endl;
+        } else {
+            outputFile2 << endl;
+        }
+        
+    } 
+}
+void outputTextFile2d(vvd &v, string s) {  
+}
 
 int main() {
     vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
@@ -343,8 +372,9 @@ int main() {
     for (int i=0; i<n/2; ++i) t.push_back(tmp);
     
     makeData(x0, n/2);
-    shuffleVVD(t, id);
-    shuffleVVD(x0, id);
+    // shuffleVVD(t, id);
+    // shuffleVVD(x0, id);
+    outputfile(x0);
 
     // cout << "first x0" << endl;
     // showMatrix(x0);
@@ -353,7 +383,7 @@ int main() {
 
 
     //learn
-    for (int i=0; i<120; ++i) {
+    for (int i=0; i<1020; ++i) {
     // for (int i=0; i<1000; ++i) {
         //forward propagation
         
@@ -391,42 +421,42 @@ int main() {
         // cout << "last x3" << endl;
         // showMatrix(x3);
 
-        if (i >= 118) {
-            cout << "w1" << endl;
-            showMatrix(w1);
-            cout << "w2" << endl;
-            showMatrix(w2);
-            cout << "w3" << endl;
-            showMatrix(w3);
+        // if (i >= 118) {
+        //     cout << "w1" << endl;
+        //     showMatrix(w1);
+        //     cout << "w2" << endl;
+        //     showMatrix(w2);
+        //     cout << "w3" << endl;
+        //     showMatrix(w3);
             
-            cout << "r L w1" << endl;
-            showMatrix(r_L_w1);
-            cout << "r L w2" << endl;
-            showMatrix(r_L_w2);
-            cout << "r L w3" << endl;
-            showMatrix(r_L_w3);
+        //     cout << "r L w1" << endl;
+        //     showMatrix(r_L_w1);
+        //     cout << "r L w2" << endl;
+        //     showMatrix(r_L_w2);
+        //     cout << "r L w3" << endl;
+        //     showMatrix(r_L_w3);
 
-            cout << "b1" << endl;
-            showMatrixB(b1);
-            cout << "b2" << endl;
-            showMatrixB(b2);
-            cout << "b3" << endl;
-            showMatrixB(b3);
+        //     cout << "b1" << endl;
+        //     showMatrixB(b1);
+        //     cout << "b2" << endl;
+        //     showMatrixB(b2);
+        //     cout << "b3" << endl;
+        //     showMatrixB(b3);
 
-            cout << "r L b1" << endl;
-            showMatrixB(r_L_b1);
-            cout << "r L b2" << endl;
-            showMatrixB(r_L_b2);
-            cout << "r L b3" << endl;
-            showMatrixB(r_L_b3);
+        //     cout << "r L b1" << endl;
+        //     showMatrixB(r_L_b1);
+        //     cout << "r L b2" << endl;
+        //     showMatrixB(r_L_b2);
+        //     cout << "r L b3" << endl;
+        //     showMatrixB(r_L_b3);
             
-            // cout << i << " cross entropy";
-            // cout << crossEntropy(x3, t) << endl;
-            // cout << "accuracy rate ";
-            // cout << calcAccuracyRate(x3, t) << endl;
-            cout << "last x3" << endl;
-            showMatrix(x3);
-        }
+        //     // cout << i << " cross entropy";
+        //     // cout << crossEntropy(x3, t) << endl;
+        //     // cout << "accuracy rate ";
+        //     // cout << calcAccuracyRate(x3, t) << endl;
+        //     cout << "last x3" << endl;
+        //     showMatrix(x3);
+        // }
 
         //back propagation
         r_hL_x3 = calc_r_hL_x3(x3, t);
@@ -503,3 +533,12 @@ int main() {
 }
 
 
+/*
+
+loop 81
+
+w1 = 2.329
+rw1 = -2.796
+
+
+*/
