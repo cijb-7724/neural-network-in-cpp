@@ -383,6 +383,23 @@ int main() {
     // cout << "t" << endl;
     // showMatrix(t);
 
+    //label
+    for (int i=0; i<n; ++i) {
+        double dist = sqrt(x0[i][0]*x0[i][0] + x0[i][1]*x0[i][1]);
+        cout << i << ' ';
+        if (dist < 3) {
+            cout << " in ";
+        } else {
+            cout << "out ";
+        }
+        if (t[i][0] == 1) {
+            cout << " in" << endl;
+        } else {
+            cout << "out" << endl;
+        }
+    }
+    return 0;
+
 
     //learn
     for (int i=0; i<1020; ++i) {
