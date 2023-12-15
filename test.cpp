@@ -350,9 +350,12 @@ int main() {
     makeInitialValue(b1, 0, 2/sqrt(3));
     makeInitialValue(b2, 0, 2/sqrt(3));
     makeInitialValue(b3, 0, 2/sqrt(2));
-    expansionBias(b1, n);
-    expansionBias(b2, n);
-    expansionBias(b3, n);
+    // expansionBias(b1, n);
+    // expansionBias(b2, n);
+    // expansionBias(b3, n);
+    expansionBias(b1, 1);
+    expansionBias(b2, 1);
+    expansionBias(b3, 1);
     
     cout << "w" << endl;
     showMatrix(w1);
@@ -402,18 +405,21 @@ int main() {
 
 
     //learn
-    for (int i=0; i<3; ++i) {
+    for (int i=0; i<500; ++i) {
+        if (i % 50 == 0) eta /= 2;
         //forward propagation
         shuffle(id.begin(), id.end(), engine);
         shuffleVVD(t, id);
         shuffleVVD(x0, id);
-        cout << "first x0" << endl;
-        showMatrix(x0);
-        cout << "t" << endl;
-        showMatrix(t);
+        // cout << "first x0" << endl;
+        // showMatrix(x0);
+        // cout << "t" << endl;
+        // showMatrix(t);
+        vvd x00 = {{x0[0][0], x0[0][1]}};
+        vvd t00 = {{t[0][0], t[0][1]}};
         
         //a1 = w1 * x0 + b1
-        multiMatrix(tmp1, x0, w1);
+        multiMatrix(tmp1, x00, w1);
         addMatrix(a1, tmp1, b1);
         h_ReLUMatrix(a1);
         x1 = a1;
@@ -440,9 +446,9 @@ int main() {
         //     showMatrix(t);
         // }
         cout << i << " cross entropy ";
-        cout << crossEntropy(x3, t) << endl;
+        cout << crossEntropy(x3, t00) << endl;
         cout << "accuracy rate ";
-        cout << calcAccuracyRate(x3, t) << endl;
+        cout << calcAccuracyRate(x3, t00) << endl;
         // cout << "last x3" << endl;
         // showMatrix(x3);
 
@@ -494,30 +500,34 @@ int main() {
     // showMatrix(t);
 
     // test
+    cout << "test" << endl;
+    expansionBias(b1, n);
+    expansionBias(b2, n);
+    expansionBias(b3, n);
     // makeData(x0, n/2);
 
-    // cout << "test x0" << endl;
-    // showMatrix(x0);
+    cout << "test x0" << endl;
+    showMatrix(x0);
 
-    // //a1 = w1 * x0 + b1
-    // multiMatrix(tmp1, x0, w1);
-    // addMatrix(a1, tmp1, b1);
-    // h_ReLUMatrix(a1);
-    // x1 = a1;
-    // //a2 = w2 * x1 + b2
-    // multiMatrix(tmp1, x1, w2);
-    // addMatrix(a2, tmp1, b2);
-    // h_ReLUMatrix(a2);
-    // x2 = a2;
-    // //a3 = w3 * x2 + b3
-    // multiMatrix(tmp1, x2, w3);
-    // addMatrix(a3, tmp1, b3);
-    // x3 = softMax(a3);
+    //a1 = w1 * x0 + b1
+    multiMatrix(tmp1, x0, w1);
+    addMatrix(a1, tmp1, b1);
+    h_ReLUMatrix(a1);
+    x1 = a1;
+    //a2 = w2 * x1 + b2
+    multiMatrix(tmp1, x1, w2);
+    addMatrix(a2, tmp1, b2);
+    h_ReLUMatrix(a2);
+    x2 = a2;
+    //a3 = w3 * x2 + b3
+    multiMatrix(tmp1, x2, w3);
+    addMatrix(a3, tmp1, b3);
+    x3 = softMax(a3);
 
-    // cout << "cross entropy";
-    // cout << crossEntropy(x3, t) << endl;
-    // cout << "accuracy rate ";
-    // cout << calcAccuracyRate(x3, t) << endl;
+    cout << "cross entropy";
+    cout << crossEntropy(x3, t) << endl;
+    cout << "accuracy rate ";
+    cout << calcAccuracyRate(x3, t) << endl;
 
 }
 
