@@ -328,7 +328,7 @@ void outputTextFile2d(vvd &v, string s) {
 int main() {
     vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
     vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
-    double eta = 0.01;
+    double eta = 0.1;
     int n = 100;
 
     vector<int> id(n);
@@ -341,15 +341,15 @@ int main() {
     w1.assign(2, vd(3, 0));
     w2.assign(3, vd(3, 0));
     w3.assign(3, vd(2, 0));
-    makeInitialValue(w1, 0, 2/sqrt(2));
-    makeInitialValue(w2, 0, 2/sqrt(3));
-    makeInitialValue(w3, 0, 2/sqrt(3));
+    makeInitialValue(w1, 0, sqrt(2.0/2));
+    makeInitialValue(w2, 0, sqrt(2.0/3));
+    makeInitialValue(w3, 0, sqrt(2.0/3));
     b1.assign(1, vd(3, 0));
     b2.assign(1, vd(3, 0));
     b3.assign(1, vd(2, 0));
-    makeInitialValue(b1, 0, 2/sqrt(3));
-    makeInitialValue(b2, 0, 2/sqrt(3));
-    makeInitialValue(b3, 0, 2/sqrt(2));
+    makeInitialValue(b1, 0, sqrt(2.0/3));
+    makeInitialValue(b2, 0, sqrt(2.0/3));
+    makeInitialValue(b3, 0, sqrt(2.0/2));
     // expansionBias(b1, n);
     // expansionBias(b2, n);
     // expansionBias(b3, n);
@@ -405,8 +405,8 @@ int main() {
 
 
     //learn
-    for (int i=0; i<500; ++i) {
-        if (i % 50 == 0) eta /= 2;
+    for (int i=0; i<100; ++i) {
+        if (i % 30 == 0) eta *= 0.9;
         //forward propagation
         shuffle(id.begin(), id.end(), engine);
         shuffleVVD(t, id);
