@@ -112,7 +112,8 @@ double crossEntropy(vvd &y, vvd &t) {
             } else if (y[i][j] < 0) {
                 cout << "log -x !!!!!!!!!!!!!!!!" << endl;
             }
-            if (y[i][j] <= 1e-5) y[i][j] = 1e-5;
+            // if (y[i][j] <= 1e-5) y[i][j] = 1e-5;
+            if (y[i][j] <= 0) y[i][j] = 1e-5;
             if (t[i][j]) sum += t[i][j] * log(y[i][j]);
         }
     }
