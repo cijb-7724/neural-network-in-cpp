@@ -48,13 +48,16 @@ double h_tash(double x) {
 double h_ReLU(double x) {
     return (x > 0) ? x : 0;
 }
-void h_ReLUMatrix(vvd &x) {
+
+vvd h_ReLUMatrix(vvd &x) {
     int n = x.size(), m = x[0].size();
+    vvd tmp(n, vd(m));
     for (int i=0; i<n; ++i) {
         for (int j=0; j<m; ++j) {
-            x[i][j] = h_ReLU(x[i][j]);
+            tmp[i][j] = h_ReLU(x[i][j]);
         }
     }
+    return tmp;
 }
 void showMatrix(vvd &a) {
     int n = a.size(), m = a[0].size();
@@ -109,6 +112,7 @@ double crossEntropy(vvd &y, vvd &t) {
             } else if (y[i][j] < 0) {
                 cout << "log -x !!!!!!!!!!!!!!!!" << endl;
             }
+            // if (y[i][j] <= 1e-5) y[i][j] = 1e-5;
             if (y[i][j] <= 0) y[i][j] = 1e-5;
             if (t[i][j]) sum += t[i][j] * log(y[i][j]);
         }
@@ -163,7 +167,7 @@ void tMatrix(vvd &a) {
     }
 }
 bool judgeTerm(double x, double y){ return (x*x + y*y < 9) ? true : false;}
-// bool judgeTerm(double x, double y){ return (y > x*x) ? true : false;}
+// bool judgeTerm(double x, double y){ return (y > x) ? true : false;}
 void makeData(vvd &x, int n, int seed=0) {
     //条件を満たす点と満たさない点をｎ個ずつ作る
     
@@ -213,11 +217,11 @@ void expansionBias(vvd &b, int batch) {
 
 vvd calc_r_hL_x3(vvd &x, vvd &t) {
     int n = x.size(), m = x[0].size();
-    double ips = 0.01, fLup, fLdown;
+    // double ips = 0.01, fLup, fLdown;
     vvd tmp(n, vd(m, 0));
     for (int s=0; s<n; ++s) {
         for (int j=0; j<m; ++j) {
-            tmp[s][j] = -t[s][j] / x[s][j];
+            // tmp[s][j] = -t[s][j] / x[s][j];
             for (int k=0; k<m; ++k) {
                 if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
                 else tmp[s][j] += t[s][k] / (x[s][k]);
@@ -274,12 +278,17 @@ void updateWeights(vvd &w, vvd &rw, double eta) {
         }
     }
 }
-
+bool test = false;
 double calcAccuracyRate(vvd &y, vvd &t) {
     int n = y.size();
     double sum = 0;
     for (int i=0; i<n; ++i) {
         if (y[i][0] < y[i][1] && t[i][1] || y[i][0] > y[i][1] && t[i][0]) sum += 1;
+        else {
+            // cout << "error instance" << endl;
+            // cout << y[i][0] << ' ' << y[i][1] << endl;
+            // cout << t[i][0] << ' ' << t[i][1] << endl;
+        }
     }
     return sum / n;
 }
@@ -328,8 +337,8 @@ void outputTextFile2d(vvd &v, string s) {
 int main() {
     vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
     vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
-    double eta = 0.01;
-    int n = 100;
+    double eta = 0.03;
+    int n = 1000;
 
     vector<int> id(n);
     for (int i=0; i<n; ++i) id[i] = i;
@@ -341,18 +350,21 @@ int main() {
     w1.assign(2, vd(3, 0));
     w2.assign(3, vd(3, 0));
     w3.assign(3, vd(2, 0));
-    makeInitialValue(w1, 0, 2/sqrt(2));
-    makeInitialValue(w2, 0, 2/sqrt(3));
-    makeInitialValue(w3, 0, 2/sqrt(3));
+    makeInitialValue(w1, 0, sqrt(2.0/2));
+    makeInitialValue(w2, 0, sqrt(2.0/3));
+    makeInitialValue(w3, 0, sqrt(2.0/3));
     b1.assign(1, vd(3, 0));
     b2.assign(1, vd(3, 0));
     b3.assign(1, vd(2, 0));
-    makeInitialValue(b1, 0, 2/sqrt(3));
-    makeInitialValue(b2, 0, 2/sqrt(3));
-    makeInitialValue(b3, 0, 2/sqrt(2));
-    expansionBias(b1, n);
-    expansionBias(b2, n);
-    expansionBias(b3, n);
+    makeInitialValue(b1, 0, sqrt(2.0/3));
+    makeInitialValue(b2, 0, sqrt(2.0/3));
+    makeInitialValue(b3, 0, sqrt(2.0/2));
+    // expansionBias(b1, n);
+    // expansionBias(b2, n);
+    // expansionBias(b3, n);
+    expansionBias(b1, 1);
+    expansionBias(b2, 1);
+    expansionBias(b3, 1);
     
     cout << "w" << endl;
     showMatrix(w1);
@@ -376,7 +388,7 @@ int main() {
     makeData(x0, n/2);
     // shuffleVVD(t, id);
     // shuffleVVD(x0, id);
-    outputfile(x0);
+    // outputfile(x0);
 
     // cout << "first x0" << endl;
     // showMatrix(x0);
@@ -402,23 +414,27 @@ int main() {
 
 
     //learn
-    for (int i=0; i<1020; ++i) {
-    // for (int i=0; i<1000; ++i) {
+    for (int i=0; i<5000; ++i) {
+        if (i % 800 == 0) eta *= 0.7;
         //forward propagation
-        // shuffle(id.begin(), id.end(), engine);
-        // shuffleVVD(t, id);
-        // shuffleVVD(x0, id);
+        shuffle(id.begin(), id.end(), engine);
+        shuffleVVD(t, id);
+        shuffleVVD(x0, id);
+        // cout << "first x0" << endl;
+        // showMatrix(x0);
+        // cout << "t" << endl;
+        // showMatrix(t);
+        vvd x00 = {{x0[0][0], x0[0][1]}};
+        vvd t00 = {{t[0][0], t[0][1]}};
         
         //a1 = w1 * x0 + b1
-        multiMatrix(tmp1, x0, w1);
+        multiMatrix(tmp1, x00, w1);
         addMatrix(a1, tmp1, b1);
-        h_ReLUMatrix(a1);
-        x1 = a1;
+        x1 = h_ReLUMatrix(a1);
         //a2 = w2 * x1 + b2
         multiMatrix(tmp1, x1, w2);
         addMatrix(a2, tmp1, b2);
-        h_ReLUMatrix(a2);
-        x2 = a2;
+        x2 = h_ReLUMatrix(a2);
         //a3 = w3 * x2 + b3
         multiMatrix(tmp1, x2, w3);
         addMatrix(a3, tmp1, b3);
@@ -427,58 +443,12 @@ int main() {
         // cout << crossEntropy(x3, t) << endl;
         // cout << "accuracy rate ";
         // cout << calcAccuracyRate(x3, t) << endl;
-
-        // if (i == 0) {
-            // cout << "cross entropy ";
-            // cout << crossEntropy(x3, t) << endl;
-        //     cout << "last x3" << endl;
-        //     showMatrix(x3);
-        //     cout << "teacher" << endl;
-        //     showMatrix(t);
-        // }
-        cout << i << " cross entropy ";
-        cout << crossEntropy(x3, t) << endl;
-        cout << "accuracy rate ";
-        cout << calcAccuracyRate(x3, t) << endl;
-        // cout << "last x3" << endl;
-        // showMatrix(x3);
-
-        // if (i >= 118) {
-        //     cout << "w1" << endl;
-        //     showMatrix(w1);
-        //     cout << "w2" << endl;
-        //     showMatrix(w2);
-        //     cout << "w3" << endl;
-        //     showMatrix(w3);
-            
-        //     cout << "r L w1" << endl;
-        //     showMatrix(r_L_w1);
-        //     cout << "r L w2" << endl;
-        //     showMatrix(r_L_w2);
-        //     cout << "r L w3" << endl;
-        //     showMatrix(r_L_w3);
-
-        //     cout << "b1" << endl;
-        //     showMatrixB(b1);
-        //     cout << "b2" << endl;
-        //     showMatrixB(b2);
-        //     cout << "b3" << endl;
-        //     showMatrixB(b3);
-
-        //     cout << "r L b1" << endl;
-        //     showMatrixB(r_L_b1);
-        //     cout << "r L b2" << endl;
-        //     showMatrixB(r_L_b2);
-        //     cout << "r L b3" << endl;
-        //     showMatrixB(r_L_b3);
-            
-        //     // cout << i << " cross entropy";
-        //     // cout << crossEntropy(x3, t) << endl;
-        //     // cout << "accuracy rate ";
-        //     // cout << calcAccuracyRate(x3, t) << endl;
-        //     cout << "last x3" << endl;
-        //     showMatrix(x3);
-        // }
+        if (i % 500 == 0) {
+            cout << i << " cross entropy ";
+            cout << crossEntropy(x3, t00) << endl;
+            cout << "accuracy rate ";
+            cout << calcAccuracyRate(x3, t00) << endl;
+        }
 
         //back propagation
         r_hL_x3 = calc_r_hL_x3(x3, t);
@@ -518,49 +488,85 @@ int main() {
         updateWeights(b3, r_L_b3, eta);
         
     }
-    
-    // cout << "cross entropy ";
-    // cout << crossEntropy(x3, t) << endl;
-    // cout << "last x3" << endl;
-    // showMatrix(x3);
-    // cout << "teacher" << endl;
-    // showMatrix(t);
 
-    // test
-    // makeData(x0, n/2);
+    // train set---------------------------------
+    cout << "=========================================" << endl;
+    cout << "train set rate" << endl;
+    expansionBias(b1, n);
+    expansionBias(b2, n);
+    expansionBias(b3, n);
+    // t.assign(0, vd(0));
+    multiMatrix(tmp1, x0, w1);
+    addMatrix(a1, tmp1, b1);
+    x1 = h_ReLUMatrix(a1);
+    //a2 = w2 * x1 + b2
+    multiMatrix(tmp1, x1, w2);
+    addMatrix(a2, tmp1, b2);
+    x2 = h_ReLUMatrix(a2);
+    //a3 = w3 * x2 + b3
+    multiMatrix(tmp1, x2, w3);
+    addMatrix(a3, tmp1, b3);
+    x3 = softMax(a3);
+
+    cout << "cross entropy";
+    cout << crossEntropy(x3, t) << endl;
+    cout << "accuracy rate ";
+    cout << calcAccuracyRate(x3, t) << endl;
+
+    // test set-------------------------------------
+    cout << "=========================================" << endl;
+    cout << "test" << endl;
+    
+    makeData(x0, n/2);
+    
+    t.assign(0, vd(0));
+    tmp = {1, 0};//inner
+    for (int i=0; i<n/2; ++i) t.push_back(tmp);
+    tmp = {0, 1};//outer
+    for (int i=0; i<n/2; ++i) t.push_back(tmp);
+
+    // cout << "test answer" << endl;
+    // showMatrix(t);
 
     // cout << "test x0" << endl;
     // showMatrix(x0);
 
-    // //a1 = w1 * x0 + b1
-    // multiMatrix(tmp1, x0, w1);
-    // addMatrix(a1, tmp1, b1);
-    // h_ReLUMatrix(a1);
-    // x1 = a1;
-    // //a2 = w2 * x1 + b2
-    // multiMatrix(tmp1, x1, w2);
-    // addMatrix(a2, tmp1, b2);
-    // h_ReLUMatrix(a2);
-    // x2 = a2;
-    // //a3 = w3 * x2 + b3
-    // multiMatrix(tmp1, x2, w3);
-    // addMatrix(a3, tmp1, b3);
-    // x3 = softMax(a3);
+    //a1 = w1 * x0 + b1
+    multiMatrix(tmp1, x0, w1);
+    addMatrix(a1, tmp1, b1);
+    x1 = h_ReLUMatrix(a1);
+    //a2 = w2 * x1 + b2
+    multiMatrix(tmp1, x1, w2);
+    addMatrix(a2, tmp1, b2);
+    x2 = h_ReLUMatrix(a2);
+    //a3 = w3 * x2 + b3
+    multiMatrix(tmp1, x2, w3);
+    addMatrix(a3, tmp1, b3);
+    x3 = softMax(a3);
 
-    // cout << "cross entropy";
-    // cout << crossEntropy(x3, t) << endl;
-    // cout << "accuracy rate ";
-    // cout << calcAccuracyRate(x3, t) << endl;
+    test = true;
+
+    cout << "cross entropy";
+    cout << crossEntropy(x3, t) << endl;
+    cout << "accuracy rate ";
+    cout << calcAccuracyRate(x3, t) << endl;
+
+    cout << "=========================================" << endl;
+    showMatrix(w1);
+    showMatrix(w2);
+    showMatrix(w3);
+    showMatrixB(b1);
+    showMatrixB(b2);
+    showMatrixB(b3);
+    cout << "=========================================" << endl;
+    
+    
+    
 
 }
 
 
 /*
-
-loop 81
-
-w1 = 2.329
-rw1 = -2.796
 
 
 */
