@@ -13,6 +13,7 @@
 #include <string>
 #include <fstream>
 #include <random>
+#include <sstream>
 
 using namespace std;
 
@@ -170,7 +171,6 @@ bool judgeTerm(double x, double y){ return (x*x + y*y < 9) ? true : false;}
 // bool judgeTerm(double x, double y){ return (y > x) ? true : false;}
 void makeData(vvd &x, int n, int seed=0) {
     //条件を満たす点と満たさない点をｎ個ずつ作る
-    
     x.assign(2*n, vd(2, 0));
     int id = 0;
     while(id < n) {
@@ -202,7 +202,6 @@ void makeInitialValue(vvd &table, double mu, double sig) {
         }
     }
 }
-
 
 void expansionBias(vvd &b, int batch) {
     vd tmp = b[0];
@@ -303,50 +302,18 @@ void shuffleVVD(vvd &v, vector<int> &id) {
     }
     v = tmp;
 }
-#include <fstream>
-void outputfile(vvd &x) {
-    int n = x.size(), m = x[0].size();
-    string fname1 = "in.txt";
-    string fname2 = "out.txt";
-    ofstream outputFile (fname1);
-    ofstream outputFile2 (fname2);
-    
 
-    for (int i=0; i<n; ++i) {
-        for (int j=0; j<m; ++j) {
-            if (i < n/2) {
-                outputFile << x[i][j];
-                if (j != m-1) outputFile << " ";
-            } else {
-                outputFile2 << x[i][j];
-                if (j != m-1) outputFile2 << " ";
-            }
-            
-        }
-        if (i < n/2) {
-            outputFile << endl;
-        } else {
-            outputFile2 << endl;
-        }
-        
-    } 
-}
-void outputTextFile2d(vvd &v, string s) {  
-}
 
 int main() {
     vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
     vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
-    double eta = 0.03;
+    double eta = 0.1;
     int n = 1000;
 
     vector<int> id(n);
     for (int i=0; i<n; ++i) id[i] = i;
     shuffle(id.begin(), id.end(), engine);
     
-    // w1 = {{-0.35, -0.52, -0.96}, {-0.88, -0.76, -0.086}};
-    // w2 = {{-0.47, -0.32, 0.93}, {0.47, -0.015, 0.88}, {-0.13, -0.22, 1.1}};
-    // w3 = {{-1.2, 0.47}, {0.16, 0.75}, {-1.8, -0.85}};
     w1.assign(2, vd(3, 0));
     w2.assign(3, vd(3, 0));
     w3.assign(3, vd(2, 0));
@@ -414,8 +381,8 @@ int main() {
 
 
     //learn
-    for (int i=0; i<5000; ++i) {
-        if (i % 800 == 0) eta *= 0.7;
+    for (int i=0; i<1500; ++i) {
+        if (i % 800 == 0) eta *= 0.5;
         //forward propagation
         shuffle(id.begin(), id.end(), engine);
         shuffleVVD(t, id);
@@ -439,10 +406,6 @@ int main() {
         multiMatrix(tmp1, x2, w3);
         addMatrix(a3, tmp1, b3);
         x3 = softMax(a3);
-        // cout << i << " cross entropy";
-        // cout << crossEntropy(x3, t) << endl;
-        // cout << "accuracy rate ";
-        // cout << calcAccuracyRate(x3, t) << endl;
         if (i % 500 == 0) {
             cout << i << " cross entropy ";
             cout << crossEntropy(x3, t00) << endl;
