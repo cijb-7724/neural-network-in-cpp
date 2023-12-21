@@ -312,7 +312,7 @@ int main() {
 
     vector<int> id(n);
     for (int i=0; i<n; ++i) id[i] = i;
-    shuffle(id.begin(), id.end(), engine);
+    // shuffle(id.begin(), id.end(), engine);
     
     w1.assign(2, vd(3, 0));
     w2.assign(3, vd(3, 0));
