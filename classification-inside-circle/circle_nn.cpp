@@ -16,7 +16,12 @@ using namespace std;
 using vd = vector<double>;
 using vvd = vector<vector<double>>;
 
-
+//function
+bool judge_term(double x, double y);
+vvd make_data(int n);
+void make_initial_value(vvd &table, double mu, double sig);
+double calc_accuracy_rate(vvd &y, vvd &t);
+void shuffle_VVD(vvd &v, vector<int> &id);
 //MATRIX
 void matrix_show(vvd &a);
 void matrix_show_b(vvd &a);
@@ -56,82 +61,26 @@ long long SEED = 0;//実行毎に同じ乱数生成
 mt19937 engine(SEED);
 uniform_real_distribution<> distCircle(-6, 6);
 
-
-
-bool judgeTerm(double x, double y){ return (x*x + y*y < 9) ? true : false;}
-//条件を満たす点と満たさない点をn/2個ずつ作る
-vvd makeData(int n, int seed=0) {
-    SEED = seed;
-    vvd x;
-    x.assign(n, vd(2, 0));
-    int id = 0;
-    while(id < n/2) {
-        double a, b;
-        a = distCircle(engine);
-        b = distCircle(engine);
-        if (judgeTerm(a, b)) {
-            x[id][0] = a;
-            x[id][1] = b;
-            ++id;
-        }
-    }
-    while(id < n) {
-        double a, b;
-        a = distCircle(engine);
-        b = distCircle(engine);
-        if (!judgeTerm(a, b)) {
-            x[id][0] = a;
-            x[id][1] = b;
-            ++id;
-        }
-    }
-    return x;
-}
-void makeInitialValue(vvd &table, double mu, double sig) {
-    int n = table.size(), m = table[0].size();
-    for (int i=0; i<n; ++i) {
-        for (int j=0; j<m; ++j) {
-            table[i][j] = gaussianDistribution(mu, sig);
-        }
-    }
-}
-
-
-double calcAccuracyRate(vvd &y, vvd &t) {
-    int n = y.size();
-    double sum = 0;
-    for (int i=0; i<n; ++i) {
-        if (y[i][0] < y[i][1] && t[i][1] || y[i][0] > y[i][1] && t[i][0]) sum += 1;
-        else {
-            // cout << "error instance" << endl;
-            // cout << y[i][0] << ' ' << y[i][1] << endl;
-            // cout << t[i][0] << ' ' << t[i][1] << endl;
-        }
-    }
-    return sum / n;
-}
-
-void shuffleVVD(vvd &v, vector<int> &id) {
-    vvd tmp = v;
-    int n = v.size();
-    for (int i=0; i<n; ++i) {
-        for (int j=0; j<v[0].size(); ++j) {
-            tmp[i][j] = v[id[i]][j];
-        }
-    }
-    v = tmp;
-}
-
+//  ##   ##    ##      ####    ##   ##
+//  ### ###   ####      ##     ###  ##
+//  #######  ##  ##     ##     #### ##
+//  #######  ##  ##     ##     ## ####
+//  ## # ##  ######     ##     ##  ###
+//  ##   ##  ##  ##     ##     ##   ##
+//  ##   ##  ##  ##    ####    ##   ##
 
 int main() {
     vvd x;
-    vvd r_hL_x3, r_h3_a3, r_L_w3, r_h2_a2, r_L_w2, r_h1_a1, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
     double eta = 0.1, attenuation = 0.7;
     int n = 1000;
-    int loop = 6500;
-    int batch_size = 7;
-    vector<int> nn_form = {2, 3, 3, 2};
+    int show_interval = 1000;
+    int learning_plan = 2000;
+    int loop = 3500;
+    int batch_size = 100;
+    // vector<int> nn_form = {2, 3, 3, 2};
+    vector<int> nn_form = {2, 10, 10, 10, 2};
     int depth = nn_form.size()-1;
+
     vector<layer_t> nn(depth);
 
     vector<int> id(n);
@@ -141,8 +90,8 @@ int main() {
     for (int i=0; i<depth; ++i) {
         nn[i].w.assign(nn_form[i], vd(nn_form[i+1], 0));
         nn[i].b.assign(batch_size, vd(nn_form[i+1], 0));
-        makeInitialValue(nn[i].w, 0, sqrt(2.0/nn_form[i]));
-        makeInitialValue(nn[i].b, 0, sqrt(2.0/nn_form[i]));
+        make_initial_value(nn[i].w, 0, sqrt(2.0/nn_form[i]));
+        make_initial_value(nn[i].b, 0, sqrt(2.0/nn_form[i]));
         nn[i].b = expansion_bias(nn[i].b, batch_size);
     }
     
@@ -157,7 +106,7 @@ int main() {
     
     //訓練セットの作成
     //前半半分は円の内側，後半半分は円の外側
-    x = makeData(n);
+    x = make_data(n);
     //教師ラベルの作成 {1,0}内側
     vvd t;
     for (int i=0; i<n/2; ++i) t.push_back({1, 0});//inside
@@ -168,8 +117,8 @@ int main() {
         //mini batchの作成
         vvd x0, t0;
         shuffle(id.begin(), id.end(), engine);
-        shuffleVVD(t, id);
-        shuffleVVD(x, id);
+        shuffle_VVD(t, id);
+        shuffle_VVD(x, id);
         //全データから先頭batchi_sizeだけmini batchを取得
         for (int j=0; j<batch_size; ++j) {
             x0.push_back(x[j]);
@@ -187,12 +136,14 @@ int main() {
         //back propagation
         for (int k=depth-1; k>=0; --k) {
             if (k == depth-1) {
-                r_hL_x3 = calc_r_cross_entropy(nn[k].x, t);
-                r_h3_a3 = calc_r_softmax(nn[k].x);
-                nn[k].delta = matrix_adm_multi(r_hL_x3, r_h3_a3);
+                vvd r_fL_xk, r_hk_ak;
+                r_fL_xk = calc_r_cross_entropy(nn[k].x, t);
+                r_hk_ak = calc_r_softmax(nn[k].x);
+                nn[k].delta = matrix_adm_multi(r_fL_xk, r_hk_ak);
             } else {
-                r_h2_a2 = calc_r_ReLU(nn[k].a);
-                nn[k].delta = matrix_adm_multi(r_h2_a2, matrix_multi(nn[k+1].delta, matrix_t(nn[k+1].w)));
+                vvd r_h_a;
+                r_h_a = calc_r_ReLU(nn[k].a);
+                nn[k].delta = matrix_adm_multi(r_h_a, matrix_multi(nn[k+1].delta, matrix_t(nn[k+1].w)));
             }
             nn[k].rb = calc_r_bias(nn[k].b, nn[k].delta);
             if (k != 0) nn[k].rw = matrix_multi(matrix_t(nn[k-1].x), nn[k].delta);
@@ -200,66 +151,62 @@ int main() {
         }
 
         //update parameters
-        if ((i+1) % 800 == 0) eta *= attenuation;
+        if ((i+1) % learning_plan == 0) eta *= attenuation;
         for (int k=0; k<depth; ++k) {
             updateWeights(nn[k].w, nn[k].rw, eta);
             updateWeights(nn[k].b, nn[k].rb, eta);
         }
-        
+
         //たまに性能の確認
-        if (i % 1000 == 0) {
+        if (i % show_interval == 0) {
             cout << i << " cross entropy ";
-            cout << hm_cross_entropy(nn[2].x, t0) << endl;
+            cout << hm_cross_entropy(nn[depth-1].x, t0) << endl;
             cout << "accuracy rate ";
-            cout << calcAccuracyRate(nn[2].x, t0) << endl;
+            cout << calc_accuracy_rate(nn[depth-1].x, t0) << endl;
         }
     }
 
     // train set---------------------------------
     cout << "=========================================" << endl;
     cout << "train set" << endl;
-    nn[0].b = expansion_bias(nn[0].b, n);
-    nn[1].b = expansion_bias(nn[1].b, n);
-    nn[2].b = expansion_bias(nn[2].b, n);
+    for (int i=0; i<depth; ++i) {
+        nn[i].b = expansion_bias(nn[i].b, n);
+    }
 
-    //a1 = x0 * w1 + b1
-    nn[0].a = matrix_add(matrix_multi(x, nn[0].w), nn[0].b);
-    nn[0].x = hm_ReLU(nn[0].a);
-    //a2 = x1 * w2 + b2
-    nn[1].a = matrix_add(matrix_multi(nn[0].x, nn[1].w), nn[1].b);
-    nn[1].x = hm_ReLU(nn[1].a);
-    //a3 = x2 * w3 + b3
-    nn[2].a = matrix_add(matrix_multi(nn[1].x, nn[2].w), nn[2].b);
-    nn[2].x = hm_softmax(nn[2].a);
-    
+    //forward propagation
+    for (int k=0; k<depth; ++k) {
+        if (k == 0) nn[k].a = matrix_add(matrix_multi(x, nn[k].w), nn[k].b);
+        else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
+        if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+        else nn[k].x = hm_softmax(nn[k].a);
+    }
+
     cout << " cross entropy ";
-    cout << hm_cross_entropy(nn[2].x, t) << endl;
+    cout << hm_cross_entropy(nn[depth-1].x, t) << endl;
     cout << "accuracy rate ";
-    cout << calcAccuracyRate(nn[2].x, t) << endl;
+    cout << calc_accuracy_rate(nn[depth-1].x, t) << endl;
     cout << "=========================================" << endl;
 
     // test set-------------------------------------
     cout << "=========================================" << endl;
     cout << "test" << endl;
-    x = makeData(n);
+    x = make_data(n);
     t.assign(0, vd(0));
     for (int i=0; i<n/2; ++i) t.push_back({1, 0});
     for (int i=0; i<n/2; ++i) t.push_back({0, 1});
 
-    //a1 = x0 * w1 + b1
-    nn[0].a = matrix_add(matrix_multi(x, nn[0].w), nn[0].b);
-    nn[0].x = hm_ReLU(nn[0].a);
-    //a2 = x1 * w2 + b2
-    nn[1].a = matrix_add(matrix_multi(nn[0].x, nn[1].w), nn[1].b);
-    nn[1].x = hm_ReLU(nn[1].a);
-    //a3 = x2 * w3 + b3
-    nn[2].a = matrix_add(matrix_multi(nn[1].x, nn[2].w), nn[2].b);
-    nn[2].x = hm_softmax(nn[2].a);
+    //forward propagation
+    for (int k=0; k<depth; ++k) {
+        if (k == 0) nn[k].a = matrix_add(matrix_multi(x, nn[k].w), nn[k].b);
+        else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
+        if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+        else nn[k].x = hm_softmax(nn[k].a);
+    }
 
     cout << " cross entropy ";
-    cout << hm_cross_entropy(nn[2].x, t) << endl;
+    cout << hm_cross_entropy(nn[depth-1].x, t) << endl;
     cout << "accuracy rate ";
-    cout << calcAccuracyRate(nn[2].x, t) << endl;
+    cout << calc_accuracy_rate(nn[depth-1].x, t) << endl;
     cout << "=========================================" << endl;
 
     cout << "=========================================" << endl;
@@ -270,6 +217,74 @@ int main() {
     for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
     cout << "=========================================" << endl;
 }
+
+
+//  #######  ##   ##  ##   ##    ####   ######    ####     #####   ##   ##
+//   ##   #  ##   ##  ###  ##   ##  ##  # ## #     ##     ##   ##  ###  ##
+//   ## #    ##   ##  #### ##  ##         ##       ##     ##   ##  #### ##
+//   ####    ##   ##  ## ####  ##         ##       ##     ##   ##  ## ####
+//   ## #    ##   ##  ##  ###  ##         ##       ##     ##   ##  ##  ###
+//   ##      ##   ##  ##   ##   ##  ##    ##       ##     ##   ##  ##   ##
+//  ####      #####   ##   ##    ####    ####     ####     #####   ##   ##
+
+bool judge_term(double x, double y){ return (x*x + y*y < 9) ? true : false;}
+//条件を満たす点と満たさない点をn/2個ずつ作る
+vvd make_data(int n) {
+    vvd x;
+    x.assign(n, vd(2, 0));
+    int id = 0;
+    while(id < n/2) {
+        double a, b;
+        a = distCircle(engine);
+        b = distCircle(engine);
+        if (judge_term(a, b)) {
+            x[id][0] = a;
+            x[id][1] = b;
+            ++id;
+        }
+    }
+    while(id < n) {
+        double a, b;
+        a = distCircle(engine);
+        b = distCircle(engine);
+        if (!judge_term(a, b)) {
+            x[id][0] = a;
+            x[id][1] = b;
+            ++id;
+        }
+    }
+    return x;
+}
+void make_initial_value(vvd &table, double mu, double sig) {
+    int n = table.size(), m = table[0].size();
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            table[i][j] = gaussianDistribution(mu, sig);
+        }
+    }
+}
+
+
+double calc_accuracy_rate(vvd &y, vvd &t) {
+    int n = y.size();
+    double sum = 0;
+    for (int i=0; i<n; ++i) {
+        if (y[i][0] < y[i][1] && t[i][1] || y[i][0] > y[i][1] && t[i][0]) sum += 1;
+    }
+    return sum / n;
+}
+
+void shuffle_VVD(vvd &v, vector<int> &id) {
+    vvd tmp = v;
+    int n = v.size();
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<v[0].size(); ++j) {
+            tmp[i][j] = v[id[i]][j];
+        }
+    }
+    v = tmp;
+}
+
 
 //  ##   ##    ##     ######   ######    ####    ##  ##
 //  ### ###   ####    # ## #    ##  ##    ##     ##  ##
