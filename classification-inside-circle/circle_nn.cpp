@@ -25,6 +25,8 @@ vvd tMatrix(const vvd &a);                          // a = a^T
 typedef struct {
     vvd w;
     vvd b;
+    vvd a;
+    vvd x;
 } layer_t;
 
 random_device rd;
@@ -158,15 +160,12 @@ void makeInitialValue(vvd &table, double mu, double sig) {
     }
 }
 
-void expansionBias(vvd &b, int batch) {
-    vd tmp = b[0];
-    if (b.size() != 1) {
-        cout << "bias batch size error" << endl;
-        return ;
+vvd expansionBias(vvd &b, int batch) {
+    vvd c;
+    for (int i=0; i<batch; ++i) {
+        c.push_back(b[0]);
     }
-    for (int i=0; i<batch-1; ++i) {
-        b.push_back(tmp);
-    }
+    return c;
 }
 
 vvd calc_r_hL_x3(vvd &x, vvd &t) {
@@ -218,7 +217,7 @@ void calc_r_L_b (vvd &rb, vvd &b, vvd &delta) {
             rb[0][j] += delta[i][j];
         }
     }
-    expansionBias(rb, n);
+    rb = expansionBias(rb, n);
 }
 
 void updateWeights(vvd &w, vvd &rw, double eta) {
@@ -260,12 +259,12 @@ void shuffleVVD(vvd &v, vector<int> &id) {
 
 
 int main() {
-    vvd x0, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
+    vvd x, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
     vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
     double eta = 0.1, attenuation = 0.7;
     int n = 1000;
     int loop = 6500;
-    int batch_size = 1;
+    int batch_size = 7;
     vector<int> nn_form = {2, 3, 3, 2};
     int depth = nn_form.size()-1;
     vector<layer_t> nn(depth);
@@ -279,7 +278,7 @@ int main() {
         nn[i].b.assign(batch_size, vd(nn_form[i+1], 0));
         makeInitialValue(nn[i].w, 0, sqrt(2.0/nn_form[i]));
         makeInitialValue(nn[i].b, 0, sqrt(2.0/nn_form[i]));
-        expansionBias(nn[i].b, 1);
+        nn[i].b = expansionBias(nn[i].b, batch_size);
     }
     
     //初期のパラメータ
@@ -291,10 +290,10 @@ int main() {
     for (int i=0; i<depth; ++i) showMatrixB(nn[i].b);
     cout << "=========================================" << endl;
     
-    // return 0;
+    //訓練セットの作成
     //前半半分は円の内側，後半半分は円の外側
-    x0 = makeData(n);
-    //教師データの作成 {1,0}内側
+    x = makeData(n);
+    //教師ラベルの作成 {1,0}内側
     vvd t;
     for (int i=0; i<n/2; ++i) t.push_back({1, 0});//inside
     for (int i=0; i<n/2; ++i) t.push_back({0, 1});//outside
@@ -304,20 +303,24 @@ int main() {
         //forward propagation
         shuffle(id.begin(), id.end(), engine);
         shuffleVVD(t, id);
-        shuffleVVD(x0, id);
+        shuffleVVD(x, id);
 
-        vvd x00 = {{x0[0][0], x0[0][1]}};
-        vvd t00 = {{t[0][0], t[0][1]}};
+        vvd x0, t0;
+        //全データから先頭batchi_sizeだけmini batchを取得
+        for (int j=0; j<batch_size; ++j) {
+            x0.push_back(x[j]);
+            t0.push_back(t[j]);
+        }
 
-        //a1 = w1 * x0 + b1
-        tmp1 = multiMatrix(x00, nn[0].w);
+        //a1 = x0 * w1 + b1
+        tmp1 = multiMatrix(x0, nn[0].w);
         a1 = addMatrix(tmp1, nn[0].b);
         x1 = h_ReLUMatrix(a1);
-        //a2 = w2 * x1 + b2
+        //a2 = x1 * w2 + b2
         tmp1 = multiMatrix(x1, nn[1].w);
         a2 = addMatrix(tmp1, nn[1].b);
         x2 = h_ReLUMatrix(a2);
-        //a3 = w3 * x2 + b3
+        //a3 = x2 * w3 + b3
         tmp1 = multiMatrix(x2, nn[2].w);
         a3 = addMatrix(tmp1, nn[2].b);
         x3 = softMax(a3);
@@ -326,9 +329,9 @@ int main() {
         //たまに値の確認
         if (i % 500 == 0) {
             cout << i << " cross entropy ";
-            cout << crossEntropy(x3, t00) << endl;
+            cout << crossEntropy(x3, t0) << endl;
             cout << "accuracy rate ";
-            cout << calcAccuracyRate(x3, t00) << endl;
+            cout << calcAccuracyRate(x3, t0) << endl;
         }
 
         //back propagation
@@ -363,20 +366,17 @@ int main() {
         updateWeights(nn[0].b, r_L_b1, eta);
         updateWeights(nn[1].b, r_L_b2, eta);
         updateWeights(nn[2].b, r_L_b3, eta);
-        
     }
-
 
     // train set---------------------------------
     cout << "=========================================" << endl;
     cout << "train set rate" << endl;
-    expansionBias(nn[0].b, n);
-    expansionBias(nn[1].b, n);
-    expansionBias(nn[2].b, n);
-
+    nn[0].b = expansionBias(nn[0].b, n);
+    nn[1].b = expansionBias(nn[1].b, n);
+    nn[2].b = expansionBias(nn[2].b, n);
 
     //a1 = w1 * x0 + b1
-    tmp1 = multiMatrix(x0, nn[0].w);
+    tmp1 = multiMatrix(x, nn[0].w);
     a1 = addMatrix(tmp1, nn[0].b);
     x1 = h_ReLUMatrix(a1);
     //a2 = w2 * x1 + b2
@@ -397,14 +397,14 @@ int main() {
     cout << "=========================================" << endl;
     cout << "test" << endl;
     
-    x0 = makeData(n);
+    x = makeData(n);
     
     t.assign(0, vd(0));
     for (int i=0; i<n/2; ++i) t.push_back({1, 0});
     for (int i=0; i<n/2; ++i) t.push_back({0, 1});
 
     //a1 = w1 * x0 + b1
-    tmp1 = multiMatrix(x0, nn[0].w);
+    tmp1 = multiMatrix(x, nn[0].w);
     a1 = addMatrix(tmp1, nn[0].b);
     x1 = h_ReLUMatrix(a1);
     //a2 = w2 * x1 + b2
