@@ -17,10 +17,28 @@ using vd = vector<double>;
 using vvd = vector<vector<double>>;
 
 
-vvd multiMatrix(const vvd &a, const vvd &b);        // c + a * b
-vvd admMultiMatrix(const vvd &a, const vvd &b);     // c = a .* b (admal)
-vvd addMatrix(const vvd &a, const vvd &b);          // c = a + b
-vvd tMatrix(const vvd &a);                          // a = a^T
+//MATRIX
+void matrix_show(vvd &a);
+void matrix_show_b(vvd &a);
+vvd matrix_multi(const vvd &a, const vvd &b);
+vvd matrix_adm_multi(const vvd &a, const vvd &b);
+vvd matrix_add(const vvd &a, const vvd &b);
+vvd matrix_t(const vvd &a);
+//ACTIVATION
+double gaussianDistribution (double mu, double sig);
+double h_sigmoid(double x);
+double h_tash(double x);
+double h_ReLU(double x);
+vvd hm_ReLU(vvd &x);
+vvd hm_softmax(vvd &x);
+double hm_cross_entropy(vvd &y, vvd &t);
+//BACK PROPAGATION
+vvd expansion_bias(vvd &b, int batch);
+vvd calc_r_cross_entropy(vvd &x, vvd &t);
+vvd calc_r_softmax (vvd &a, vvd &x);
+vvd calc_r_ReLU (vvd &a, vvd &x);
+vvd calc_r_bias (vvd &b, vvd &delta);
+void updateWeights(vvd &w, vvd &rw, double eta);
 
 typedef struct {
     vvd w;
@@ -39,91 +57,6 @@ mt19937 engine(SEED);
 uniform_real_distribution<> distCircle(-6, 6);
 
 
-double gaussianDistribution (double mu, double sig) {
-    normal_distribution <> dist(mu, sig);
-    return dist(engine);
-}
-double h_sigmoid(double x) {
-    return 1/(1+exp(-x));
-}
-double h_tash(double x) {
-    return (exp(x)-exp(-x)) / (exp(x)+exp(-x));
-}
-double h_ReLU(double x) {
-    return (x > 0) ? x : 0;
-}
-
-vvd h_ReLUMatrix(vvd &x) {
-    int n = x.size(), m = x[0].size();
-    vvd tmp(n, vd(m));
-    for (int i=0; i<n; ++i) {
-        for (int j=0; j<m; ++j) {
-            tmp[i][j] = h_ReLU(x[i][j]);
-        }
-    }
-    return tmp;
-}
-void showMatrix(vvd &a) {
-    int n = a.size(), m = a[0].size();
-    for (int j=0; j<m; ++j) cout << "--";
-    cout << endl;
-    for (int i=0; i<n; ++i) {
-        for (int j=0; j<m; ++j) {
-            cout << a[i][j] << ' ';
-        }
-        cout << endl;
-    }
-    for (int j=0; j<m; ++j) cout << "--";
-    cout << endl;
-}
-
-void showMatrixB(vvd &a) {
-    int m = a[0].size();
-    for (int j=0; j<m; ++j) cout << "--";
-    cout << endl;
-
-    for (int j=0; j<m; ++j) cout << a[0][j] << ' ';
-    cout << endl;
-
-    for (int j=0; j<m; ++j) cout << "--";
-    cout << endl;
-}
-
-vvd softMax(vvd &x) {
-    int n = x.size();
-    int m = x[0].size();
-    vvd y = x;
-    for (int i=0; i<n; ++i) {
-        double mx = *max_element(y[i].begin(), y[i].end());
-        double deno = 0;
-        for (int j=0; j<m; ++j) {
-            y[i][j] -= mx;
-            deno += exp(y[i][j]);
-        }
-        for (int j=0; j<m; ++j) {
-            y[i][j] = exp(y[i][j]) / deno;
-        }
-    }
-    return y;
-}
-double crossEntropy(vvd &y, vvd &t) {
-    int n = y.size(), m = y[0].size();
-    double sum = 0;
-    for (int i=0; i<n; ++i) {
-        for (int j=0; j<m; ++j) {
-            if (y[i][j] == 0) {
-                cout << "log 0!!!!!!!!!!!!!!!!" << endl;
-            } else if (y[i][j] < 0) {
-                cout << "log -x !!!!!!!!!!!!!!!!" << endl;
-            }
-            // if (y[i][j] <= 1e-5) y[i][j] = 1e-5;
-            if (y[i][j] <= 0) y[i][j] = 1e-5;
-            if (t[i][j]) sum += t[i][j] * log(y[i][j]);
-        }
-    }
-    if (sum != sum) cout << "sum is nanananananananan" << endl;
-    return -sum/n;
-}
 
 bool judgeTerm(double x, double y){ return (x*x + y*y < 9) ? true : false;}
 //条件を満たす点と満たさない点をn/2個ずつ作る
@@ -163,78 +96,7 @@ void makeInitialValue(vvd &table, double mu, double sig) {
     }
 }
 
-vvd expansionBias(vvd &b, int batch) {
-    vvd c;
-    for (int i=0; i<batch; ++i) {
-        c.push_back(b[0]);
-    }
-    return c;
-}
 
-vvd calc_r_hL_x3(vvd &x, vvd &t) {
-    int n = x.size(), m = x[0].size();
-    // double ips = 0.01, fLup, fLdown;
-    vvd tmp(n, vd(m, 0));
-    for (int s=0; s<n; ++s) {
-        for (int j=0; j<m; ++j) {
-            // tmp[s][j] = -t[s][j] / x[s][j];
-            for (int k=0; k<m; ++k) {
-                if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
-                else tmp[s][j] += t[s][k] / (x[s][k]);
-            }
-            tmp[s][j] /= n;
-        }
-    }
-    return tmp;
-}
-vvd calc_r_h3_a3 (vvd &a, vvd &x) {
-    int n = a.size(), m = a[0].size();
-    vvd tmp(n, vd(m, 0));
-    for (int s=0; s<n; ++s) {
-        for (int j=0; j<m; ++j) {
-            tmp[s][j] = x[s][j]*(1-x[s][j]);
-        }
-    }
-    return tmp;
-}
-
-vvd calc_r_h2_a2 (vvd &a, vvd &x) {
-    int n = a.size(), m = a[0].size();
-    vvd tmp(n, vd(m, 0));
-    for (int s=0; s<n; ++s) {
-        for (int j=0; j<m; ++j) {
-            if (a[s][j] >= 0) tmp[s][j] = 1;
-        }
-    }
-    return tmp;
-}
-
-void calc_r_L_b (vvd &rb, vvd &b, vvd &delta) {
-    int n = b.size(), m = b[0].size();
-    if (n != delta.size() || m != delta[0].size()) {
-        cout << "size is not match" << endl;
-    }
-    rb.assign(1, vd(m, 0));
-    for (int j=0; j<m; ++j) {
-        for (int i=0; i<n; ++i) {
-            rb[0][j] += delta[i][j];
-        }
-    }
-    rb = expansionBias(rb, n);
-}
-
-void updateWeights(vvd &w, vvd &rw, double eta) {
-    if (!(w.size() == rw.size() && w[0].size() == rw[0].size())) {
-        cout << "the sizes are different" << endl;
-    }
-    int n = w.size(), m = w[0].size();
-    for (int i=0; i<n; ++i) {
-        for (int j=0; j<m; ++j) {
-            w[i][j] -= eta * rw[i][j];
-        }
-    }
-}
-bool test = false;
 double calcAccuracyRate(vvd &y, vvd &t) {
     int n = y.size();
     double sum = 0;
@@ -262,8 +124,8 @@ void shuffleVVD(vvd &v, vector<int> &id) {
 
 
 int main() {
-    vvd x, x1, x2, x3, a1, a2, a3, w1, w2, w3, b1, b2, b3;
-    vvd tmp1, r_hL_x3, r_h3_a3, Delta3, r_L_w3, tx2, r_h2_a2, tw3, tmp2, Delta2, tx1, r_L_w2, r_h1_a1, tw2, tmp3, Delta1, tx0, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
+    vvd x;
+    vvd r_hL_x3, r_h3_a3, r_L_w3, r_h2_a2, r_L_w2, r_h1_a1, r_L_w1, r_L_b1, r_L_b2, r_L_b3;
     double eta = 0.1, attenuation = 0.7;
     int n = 1000;
     int loop = 6500;
@@ -281,17 +143,17 @@ int main() {
         nn[i].b.assign(batch_size, vd(nn_form[i+1], 0));
         makeInitialValue(nn[i].w, 0, sqrt(2.0/nn_form[i]));
         makeInitialValue(nn[i].b, 0, sqrt(2.0/nn_form[i]));
-        nn[i].b = expansionBias(nn[i].b, batch_size);
+        nn[i].b = expansion_bias(nn[i].b, batch_size);
     }
     
     //初期のパラメータ
-    // cout << "=========================================" << endl;
-    // cout << "first parameters" << endl;
-    // cout << "w" << endl;
-    // for (int i=0; i<depth; ++i) showMatrix(nn[i].w);
-    // cout << "b" << endl;
-    // for (int i=0; i<depth; ++i) showMatrixB(nn[i].b);
-    // cout << "=========================================" << endl;
+    cout << "=========================================" << endl;
+    cout << "first parameters" << endl;
+    cout << "w" << endl;
+    for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
+    cout << "b" << endl;
+    for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
+    cout << "=========================================" << endl;
     
     //訓練セットの作成
     //前半半分は円の内側，後半半分は円の外側
@@ -316,131 +178,110 @@ int main() {
 
         //forward propagation
         //a1 = x0 * w1 + b1
-        nn[0].a = addMatrix(multiMatrix(x0, nn[0].w), nn[0].b);
-        nn[0].x = h_ReLUMatrix(nn[0].a);
-        //a2 = x1 * w2 + b2
-        nn[1].a = addMatrix(multiMatrix(nn[0].x, nn[1].w), nn[1].b);
-        nn[1].x = h_ReLUMatrix(nn[1].a);
-        //a3 = x2 * w3 + b3
-        nn[2].a = addMatrix(multiMatrix(nn[1].x, nn[2].w), nn[2].b);
-        nn[2].x = softMax(nn[2].a);
+        // nn[0].a = matrix_add(matrix_multi(x0, nn[0].w), nn[0].b);
+        // nn[0].x = hm_ReLU(nn[0].a);
+        // //a2 = x1 * w2 + b2
+        // nn[1].a = matrix_add(matrix_multi(nn[0].x, nn[1].w), nn[1].b);
+        // nn[1].x = hm_ReLU(nn[1].a);
+        // //a3 = x2 * w3 + b3
+        // nn[2].a = matrix_add(matrix_multi(nn[1].x, nn[2].w), nn[2].b);
+        // nn[2].x = hm_softmax(nn[2].a);
+
+        for (int k=0; k<depth; ++k) {
+            if (k == 0) nn[k].a = matrix_add(matrix_multi(x0, nn[k].w), nn[k].b);
+            else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
+            nn[k].x = hm_ReLU(nn[k].a);
+        }
         
         //たまに性能の確認
-        if (i % 500 == 0) {
+        if (i % 1000 == 0) {
             cout << i << " cross entropy ";
-            cout << crossEntropy(nn[2].x, t0) << endl;
+            cout << hm_cross_entropy(nn[2].x, t0) << endl;
             cout << "accuracy rate ";
             cout << calcAccuracyRate(nn[2].x, t0) << endl;
         }
 
         //back propagation
-        r_hL_x3 = calc_r_hL_x3(nn[2].x, t);
-        r_h3_a3 = calc_r_h3_a3(nn[2].a, nn[2].x);
-        nn[2].delta = admMultiMatrix(r_hL_x3, r_h3_a3);
-        calc_r_L_b(r_L_b3, nn[2].b, nn[2].delta);
+        r_hL_x3 = calc_r_cross_entropy(nn[2].x, t);
+        r_h3_a3 = calc_r_softmax(nn[2].a, nn[2].x);
+        nn[2].delta = matrix_adm_multi(r_hL_x3, r_h3_a3);
+        nn[2].rb = calc_r_bias(nn[2].b, nn[2].delta);
+        nn[2].rw = matrix_multi(matrix_t(nn[1].x), nn[2].delta);
 
-        // tx2 = tMatrix(nn[1].x);
-        r_L_w3 = multiMatrix(tMatrix(nn[1].x), nn[2].delta);
-        r_h2_a2 = calc_r_h2_a2(nn[1].a, nn[1].x);
-        // tw3 = tMatrix(nn[2].w);
-        // tmp2 = multiMatrix(nn[2].delta, tw3);
-        nn[1].delta = admMultiMatrix(r_h2_a2, multiMatrix(nn[2].delta, tMatrix(nn[2].w)));
-        calc_r_L_b(r_L_b2, nn[1].b, nn[1].delta);
+        r_h2_a2 = calc_r_ReLU(nn[1].a, nn[1].x);
+        nn[1].delta = matrix_adm_multi(r_h2_a2, matrix_multi(nn[2].delta, matrix_t(nn[2].w)));
+        nn[1].rb = calc_r_bias(nn[1].b, nn[1].delta);
+        nn[1].rw = matrix_multi(matrix_t(nn[0].x), nn[1].delta);
 
-        // tx1 = tMatrix(nn[0].x);
-        r_L_w2 = multiMatrix(tMatrix(nn[0].x), nn[1].delta);
-        r_h1_a1 = calc_r_h2_a2(nn[0].a, nn[0].x);
-        // tw2 = tMatrix(nn[1].w);
-        // tmp3 = multiMatrix(nn[1].delta, tw2);
-        nn[0].delta = admMultiMatrix(r_h1_a1, multiMatrix(nn[1].delta, tMatrix(nn[1].w)));
-        calc_r_L_b(r_L_b1, nn[0].b, nn[0].delta);
-
-        // tx0 = tMatrix(x0);
-        r_L_w1 = multiMatrix(tMatrix(x0), nn[0].delta);
+        r_h1_a1 = calc_r_ReLU(nn[0].a, nn[0].x);
+        nn[0].delta = matrix_adm_multi(r_h1_a1, matrix_multi(nn[1].delta, matrix_t(nn[1].w)));
+        nn[0].rb = calc_r_bias(nn[0].b, nn[0].delta);
+        nn[0].rw = matrix_multi(matrix_t(x0), nn[0].delta);
 
         if ((i+1) % 800 == 0) eta *= attenuation;
-        updateWeights(nn[0].w, r_L_w1, eta);
-        updateWeights(nn[1].w, r_L_w2, eta);
-        updateWeights(nn[2].w, r_L_w3, eta);
-        updateWeights(nn[0].b, r_L_b1, eta);
-        updateWeights(nn[1].b, r_L_b2, eta);
-        updateWeights(nn[2].b, r_L_b3, eta);
+        updateWeights(nn[0].w, nn[0].rw, eta);
+        updateWeights(nn[1].w, nn[1].rw, eta);
+        updateWeights(nn[2].w, nn[2].rw, eta);
+        updateWeights(nn[0].b, nn[0].rb, eta);
+        updateWeights(nn[1].b, nn[1].rb, eta);
+        updateWeights(nn[2].b, nn[2].rb, eta);
     }
 
     // train set---------------------------------
     cout << "=========================================" << endl;
-    cout << "train set rate" << endl;
-    nn[0].b = expansionBias(nn[0].b, n);
-    nn[1].b = expansionBias(nn[1].b, n);
-    nn[2].b = expansionBias(nn[2].b, n);
+    cout << "train set" << endl;
+    nn[0].b = expansion_bias(nn[0].b, n);
+    nn[1].b = expansion_bias(nn[1].b, n);
+    nn[2].b = expansion_bias(nn[2].b, n);
 
-    //a1 = w1 * x0 + b1
-    tmp1 = multiMatrix(x, nn[0].w);
-    a1 = addMatrix(tmp1, nn[0].b);
-    x1 = h_ReLUMatrix(a1);
-    //a2 = w2 * x1 + b2
-    tmp1 = multiMatrix(x1, nn[1].w);
-    a2 = addMatrix(tmp1, nn[1].b);
-    x2 = h_ReLUMatrix(a2);
-    //a3 = w3 * x2 + b3
-    tmp1 = multiMatrix(x2, nn[2].w);
-    a3 = addMatrix(tmp1, nn[2].b);
-    x3 = softMax(a3);
-
-    cout << "cross entropy";
-    cout << crossEntropy(x3, t) << endl;
+    //a1 = x0 * w1 + b1
+    nn[0].a = matrix_add(matrix_multi(x, nn[0].w), nn[0].b);
+    nn[0].x = hm_ReLU(nn[0].a);
+    //a2 = x1 * w2 + b2
+    nn[1].a = matrix_add(matrix_multi(nn[0].x, nn[1].w), nn[1].b);
+    nn[1].x = hm_ReLU(nn[1].a);
+    //a3 = x2 * w3 + b3
+    nn[2].a = matrix_add(matrix_multi(nn[1].x, nn[2].w), nn[2].b);
+    nn[2].x = hm_softmax(nn[2].a);
+    
+    cout << " cross entropy ";
+    cout << hm_cross_entropy(nn[2].x, t) << endl;
     cout << "accuracy rate ";
-    cout << calcAccuracyRate(x3, t) << endl;
+    cout << calcAccuracyRate(nn[2].x, t) << endl;
     cout << "=========================================" << endl;
 
     // test set-------------------------------------
     cout << "=========================================" << endl;
     cout << "test" << endl;
-    
     x = makeData(n);
-    
     t.assign(0, vd(0));
     for (int i=0; i<n/2; ++i) t.push_back({1, 0});
     for (int i=0; i<n/2; ++i) t.push_back({0, 1});
 
-    //a1 = w1 * x0 + b1
-    tmp1 = multiMatrix(x, nn[0].w);
-    a1 = addMatrix(tmp1, nn[0].b);
-    x1 = h_ReLUMatrix(a1);
-    //a2 = w2 * x1 + b2
-    tmp1 = multiMatrix(x1, nn[1].w);
-    a2 = addMatrix(tmp1, nn[1].b);
-    x2 = h_ReLUMatrix(a2);
-    //a3 = w3 * x2 + b3
-    tmp1 = multiMatrix(x2, nn[2].w);
-    a3 = addMatrix(tmp1, nn[2].b);
-    x3 = softMax(a3);
+    //a1 = x0 * w1 + b1
+    nn[0].a = matrix_add(matrix_multi(x, nn[0].w), nn[0].b);
+    nn[0].x = hm_ReLU(nn[0].a);
+    //a2 = x1 * w2 + b2
+    nn[1].a = matrix_add(matrix_multi(nn[0].x, nn[1].w), nn[1].b);
+    nn[1].x = hm_ReLU(nn[1].a);
+    //a3 = x2 * w3 + b3
+    nn[2].a = matrix_add(matrix_multi(nn[1].x, nn[2].w), nn[2].b);
+    nn[2].x = hm_softmax(nn[2].a);
 
-    test = true;
-
-    cout << "cross entropy";
-    cout << crossEntropy(x3, t) << endl;
+    cout << " cross entropy ";
+    cout << hm_cross_entropy(nn[2].x, t) << endl;
     cout << "accuracy rate ";
-    cout << calcAccuracyRate(x3, t) << endl;
+    cout << calcAccuracyRate(nn[2].x, t) << endl;
     cout << "=========================================" << endl;
 
-    // cout << "=========================================" << endl;
-    // cout << "w" << endl;
-    // for (int i=0; i<depth; ++i) showMatrix(nn[i].w);
-    // cout << "b" << endl;
-    // for (int i=0; i<depth; ++i) showMatrixB(nn[i].b);
-    // cout << "=========================================" << endl;
-    
-    
-    
-
+    cout << "=========================================" << endl;
+    cout << "last parameters" << endl;
+    cout << "w" << endl;
+    for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
+    cout << "b" << endl;
+    for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
+    cout << "=========================================" << endl;
 }
-
-
-/*
-
-
-*/
 
 //  ##   ##    ##     ######   ######    ####    ##  ##
 //  ### ###   ####    # ## #    ##  ##    ##     ##  ##
@@ -450,8 +291,35 @@ int main() {
 //  ##   ##  ##  ##     ##      ##  ##    ##     ##  ##
 //  ##   ##  ##  ##    ####    #### ##   ####    ##  ##
 
+// show
+void matrix_show(vvd &a) {
+    int n = a.size(), m = a[0].size();
+    for (int j=0; j<m; ++j) cout << "--";
+    cout << endl;
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            cout << a[i][j] << ' ';
+        }
+        cout << endl;
+    }
+    for (int j=0; j<m; ++j) cout << "--";
+    cout << endl;
+}
+// biasは各行同じものがバッチサイズ分あるので最初の1行だけ表示
+void matrix_show_b(vvd &a) {
+    int m = a[0].size();
+    for (int j=0; j<m; ++j) cout << "--";
+    cout << endl;
+
+    for (int j=0; j<m; ++j) cout << a[0][j] << ' ';
+    cout << endl;
+
+    for (int j=0; j<m; ++j) cout << "--";
+    cout << endl;
+}
+
 // c = a * b
-vvd multiMatrix(const vvd &a, const vvd &b) {
+vvd matrix_multi(const vvd &a, const vvd &b) {
     int n = a.size(), m = b.size(), l = b[0].size();
     vvd c;
     c.assign(n, vd(l, 0));
@@ -465,7 +333,7 @@ vvd multiMatrix(const vvd &a, const vvd &b) {
     return c;
 }
 // c = a .* b (admal)
-vvd admMultiMatrix(const vvd &a, const vvd &b) {
+vvd matrix_adm_multi(const vvd &a, const vvd &b) {
     int n = a.size(), m = a[0].size();
     vvd c;
     c.assign(n, vd(m));
@@ -478,7 +346,7 @@ vvd admMultiMatrix(const vvd &a, const vvd &b) {
 }
 
 // c = a + b
-vvd addMatrix(const vvd &a, const vvd &b) {
+vvd matrix_add(const vvd &a, const vvd &b) {
     if (a.size() != b.size() || a[0].size() != b[0].size()) {
         cout << "The matrix sizes are different." << endl;
         vvd ret = {{0}};
@@ -496,7 +364,7 @@ vvd addMatrix(const vvd &a, const vvd &b) {
 }
 
 // a = a^T
-vvd tMatrix(const vvd &a) {
+vvd matrix_t(const vvd &a) {
     int n = a.size(), m = a[0].size();
     vvd t;
     t.assign(m, vd(n));
@@ -517,8 +385,59 @@ vvd tMatrix(const vvd &a) {
 //  ##  ##    ##  ##    ##       ##       ###    ##  ##     ##       ##     ##   ##  ##   ##
 //  ##  ##     ####    ####     ####       #     ##  ##    ####     ####     #####   ##   ##
 
+double gaussianDistribution (double mu, double sig) {
+    normal_distribution <> dist(mu, sig);
+    return dist(engine);
+}
+double h_sigmoid(double x) {
+    return 1/(1+exp(-x));
+}
+double h_tash(double x) {
+    return (exp(x)-exp(-x)) / (exp(x)+exp(-x));
+}
+double h_ReLU(double x) {
+    return (x > 0) ? x : 0;
+}
 
+vvd hm_ReLU(vvd &x) {
+    int n = x.size(), m = x[0].size();
+    vvd tmp(n, vd(m));
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            tmp[i][j] = h_ReLU(x[i][j]);
+        }
+    }
+    return tmp;
+}
 
+vvd hm_softmax(vvd &x) {
+    int n = x.size();
+    int m = x[0].size();
+    vvd y = x;
+    for (int i=0; i<n; ++i) {
+        double mx = *max_element(y[i].begin(), y[i].end());
+        double deno = 0;
+        for (int j=0; j<m; ++j) {
+            y[i][j] -= mx;
+            deno += exp(y[i][j]);
+        }
+        for (int j=0; j<m; ++j) {
+            y[i][j] = exp(y[i][j]) / deno;
+        }
+    }
+    return y;
+}
+double hm_cross_entropy(vvd &y, vvd &t) {
+    int n = y.size(), m = y[0].size();
+    double sum = 0;
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            if (y[i][j] <= 0) y[i][j] = 1e-5;
+            if (t[i][j]) sum += t[i][j] * log(y[i][j]);
+        }
+    }
+    return -sum/n;
+}
 
 
 //  ######     ##       ####   ###  ##
@@ -537,4 +456,77 @@ vvd tMatrix(const vvd &a) {
 //   ##       ##  ##  ##   ##   ##      ##  ##    ##  ##  ##  ##     ##       ##     ##   ##  ##   ##
 //  ####     #### ##   #####   ####     ##  ##     #####  ##  ##    ####     ####     #####   ##   ##
 
+vvd expansion_bias(vvd &b, int batch) {
+    vvd c;
+    for (int i=0; i<batch; ++i) {
+        c.push_back(b[0]);
+    }
+    return c;
+}
 
+vvd calc_r_cross_entropy(vvd &x, vvd &t) {
+    int n = x.size(), m = x[0].size();
+    // double ips = 0.01, fLup, fLdown;
+    vvd tmp(n, vd(m, 0));
+    for (int s=0; s<n; ++s) {
+        for (int j=0; j<m; ++j) {
+            // tmp[s][j] = -t[s][j] / x[s][j];
+            for (int k=0; k<m; ++k) {
+                if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
+                else tmp[s][j] += t[s][k] / (x[s][k]);
+            }
+            tmp[s][j] /= n;
+        }
+    }
+    return tmp;
+}
+vvd calc_r_softmax (vvd &a, vvd &x) {
+    int n = a.size(), m = a[0].size();
+    vvd tmp(n, vd(m, 0));
+    for (int s=0; s<n; ++s) {
+        for (int j=0; j<m; ++j) {
+            tmp[s][j] = x[s][j]*(1-x[s][j]);
+        }
+    }
+    return tmp;
+}
+
+vvd calc_r_ReLU (vvd &a, vvd &x) {
+    int n = a.size(), m = a[0].size();
+    vvd tmp(n, vd(m, 0));
+    for (int s=0; s<n; ++s) {
+        for (int j=0; j<m; ++j) {
+            if (a[s][j] >= 0) tmp[s][j] = 1;
+        }
+    }
+    return tmp;
+}
+
+vvd calc_r_bias (vvd &b, vvd &delta) {
+    int n = b.size(), m = b[0].size();
+    vvd rb;
+    if (n != delta.size() || m != delta[0].size()) cout << "size is not match" << endl;
+    rb.assign(1, vd(m, 0));
+    for (int j=0; j<m; ++j) {
+        for (int i=0; i<n; ++i) {
+            rb[0][j] += delta[i][j];
+        }
+    }
+    rb = expansion_bias(rb, n);
+    return rb;
+}
+
+void updateWeights(vvd &w, vvd &rw, double eta) {
+    if (!(w.size() == rw.size() && w[0].size() == rw[0].size())) {
+        cout << "The matrix sizes are different." << endl;
+        cout << "in update weight" << endl;
+        cout << w.size() << ' ' << w[0].size() << endl;
+        cout << rw.size() << ' ' << rw[0].size() << endl;
+    }
+    int n = w.size(), m = w[0].size();
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            w[i][j] -= eta * rw[i][j];
+        }
+    }
+}
