@@ -27,6 +27,9 @@ typedef struct {
     vvd b;
     vvd a;
     vvd x;
+    vvd delta;
+    vvd rw;
+    vvd rb;
 } layer_t;
 
 random_device rd;
@@ -282,13 +285,13 @@ int main() {
     }
     
     //初期のパラメータ
-    cout << "=========================================" << endl;
-    cout << "first parameters" << endl;
-    cout << "w" << endl;
-    for (int i=0; i<depth; ++i) showMatrix(nn[i].w);
-    cout << "b" << endl;
-    for (int i=0; i<depth; ++i) showMatrixB(nn[i].b);
-    cout << "=========================================" << endl;
+    // cout << "=========================================" << endl;
+    // cout << "first parameters" << endl;
+    // cout << "w" << endl;
+    // for (int i=0; i<depth; ++i) showMatrix(nn[i].w);
+    // cout << "b" << endl;
+    // for (int i=0; i<depth; ++i) showMatrixB(nn[i].b);
+    // cout << "=========================================" << endl;
     
     //訓練セットの作成
     //前半半分は円の内側，後半半分は円の外側
@@ -300,64 +303,60 @@ int main() {
     
     //learn
     for (int i=0; i<loop; ++i) {
-        //forward propagation
+        //mini batchの作成
+        vvd x0, t0;
         shuffle(id.begin(), id.end(), engine);
         shuffleVVD(t, id);
         shuffleVVD(x, id);
-
-        vvd x0, t0;
         //全データから先頭batchi_sizeだけmini batchを取得
         for (int j=0; j<batch_size; ++j) {
             x0.push_back(x[j]);
             t0.push_back(t[j]);
         }
 
+        //forward propagation
         //a1 = x0 * w1 + b1
-        tmp1 = multiMatrix(x0, nn[0].w);
-        a1 = addMatrix(tmp1, nn[0].b);
-        x1 = h_ReLUMatrix(a1);
+        nn[0].a = addMatrix(multiMatrix(x0, nn[0].w), nn[0].b);
+        nn[0].x = h_ReLUMatrix(nn[0].a);
         //a2 = x1 * w2 + b2
-        tmp1 = multiMatrix(x1, nn[1].w);
-        a2 = addMatrix(tmp1, nn[1].b);
-        x2 = h_ReLUMatrix(a2);
+        nn[1].a = addMatrix(multiMatrix(nn[0].x, nn[1].w), nn[1].b);
+        nn[1].x = h_ReLUMatrix(nn[1].a);
         //a3 = x2 * w3 + b3
-        tmp1 = multiMatrix(x2, nn[2].w);
-        a3 = addMatrix(tmp1, nn[2].b);
-        x3 = softMax(a3);
+        nn[2].a = addMatrix(multiMatrix(nn[1].x, nn[2].w), nn[2].b);
+        nn[2].x = softMax(nn[2].a);
         
-
-        //たまに値の確認
+        //たまに性能の確認
         if (i % 500 == 0) {
             cout << i << " cross entropy ";
-            cout << crossEntropy(x3, t0) << endl;
+            cout << crossEntropy(nn[2].x, t0) << endl;
             cout << "accuracy rate ";
-            cout << calcAccuracyRate(x3, t0) << endl;
+            cout << calcAccuracyRate(nn[2].x, t0) << endl;
         }
 
         //back propagation
-        r_hL_x3 = calc_r_hL_x3(x3, t);
-        r_h3_a3 = calc_r_h3_a3(a3, x3);
-        Delta3 = admMultiMatrix(r_hL_x3, r_h3_a3);
-        calc_r_L_b(r_L_b3, nn[2].b, Delta3);
+        r_hL_x3 = calc_r_hL_x3(nn[2].x, t);
+        r_h3_a3 = calc_r_h3_a3(nn[2].a, nn[2].x);
+        nn[2].delta = admMultiMatrix(r_hL_x3, r_h3_a3);
+        calc_r_L_b(r_L_b3, nn[2].b, nn[2].delta);
 
-        tx2 = tMatrix(x2);
-        r_L_w3 = multiMatrix(tx2, Delta3);
-        r_h2_a2 = calc_r_h2_a2(a2, x2);
-        tw3 = tMatrix(nn[2].w);
-        tmp2 = multiMatrix(Delta3, tw3);
-        Delta2 = admMultiMatrix(r_h2_a2, tmp2);
-        calc_r_L_b(r_L_b2, nn[1].b, Delta2);
+        // tx2 = tMatrix(nn[1].x);
+        r_L_w3 = multiMatrix(tMatrix(nn[1].x), nn[2].delta);
+        r_h2_a2 = calc_r_h2_a2(nn[1].a, nn[1].x);
+        // tw3 = tMatrix(nn[2].w);
+        // tmp2 = multiMatrix(nn[2].delta, tw3);
+        nn[1].delta = admMultiMatrix(r_h2_a2, multiMatrix(nn[2].delta, tMatrix(nn[2].w)));
+        calc_r_L_b(r_L_b2, nn[1].b, nn[1].delta);
 
-        tx1 = tMatrix(x1);
-        r_L_w2 = multiMatrix(tx1, Delta2);
-        r_h1_a1 = calc_r_h2_a2(a1, x1);
-        tw2 = tMatrix(nn[1].w);
-        tmp3 = multiMatrix(Delta2, tw2);
-        Delta1 = admMultiMatrix(r_h1_a1, tmp3);
-        calc_r_L_b(r_L_b1, nn[0].b, Delta1);
+        // tx1 = tMatrix(nn[0].x);
+        r_L_w2 = multiMatrix(tMatrix(nn[0].x), nn[1].delta);
+        r_h1_a1 = calc_r_h2_a2(nn[0].a, nn[0].x);
+        // tw2 = tMatrix(nn[1].w);
+        // tmp3 = multiMatrix(nn[1].delta, tw2);
+        nn[0].delta = admMultiMatrix(r_h1_a1, multiMatrix(nn[1].delta, tMatrix(nn[1].w)));
+        calc_r_L_b(r_L_b1, nn[0].b, nn[0].delta);
 
-        tx0 = tMatrix(x0);
-        r_L_w1 = multiMatrix(tx0, Delta1);
+        // tx0 = tMatrix(x0);
+        r_L_w1 = multiMatrix(tMatrix(x0), nn[0].delta);
 
         if ((i+1) % 800 == 0) eta *= attenuation;
         updateWeights(nn[0].w, r_L_w1, eta);
@@ -392,6 +391,7 @@ int main() {
     cout << crossEntropy(x3, t) << endl;
     cout << "accuracy rate ";
     cout << calcAccuracyRate(x3, t) << endl;
+    cout << "=========================================" << endl;
 
     // test set-------------------------------------
     cout << "=========================================" << endl;
@@ -422,13 +422,14 @@ int main() {
     cout << crossEntropy(x3, t) << endl;
     cout << "accuracy rate ";
     cout << calcAccuracyRate(x3, t) << endl;
+    cout << "=========================================" << endl;
 
-    cout << "=========================================" << endl;
-    cout << "w" << endl;
-    for (int i=0; i<depth; ++i) showMatrix(nn[i].w);
-    cout << "b" << endl;
-    for (int i=0; i<depth; ++i) showMatrixB(nn[i].b);
-    cout << "=========================================" << endl;
+    // cout << "=========================================" << endl;
+    // cout << "w" << endl;
+    // for (int i=0; i<depth; ++i) showMatrix(nn[i].w);
+    // cout << "b" << endl;
+    // for (int i=0; i<depth; ++i) showMatrixB(nn[i].b);
+    // cout << "=========================================" << endl;
     
     
     
