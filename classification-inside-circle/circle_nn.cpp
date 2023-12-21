@@ -35,8 +35,8 @@ double hm_cross_entropy(vvd &y, vvd &t);
 //BACK PROPAGATION
 vvd expansion_bias(vvd &b, int batch);
 vvd calc_r_cross_entropy(vvd &x, vvd &t);
-vvd calc_r_softmax (vvd &a, vvd &x);
-vvd calc_r_ReLU (vvd &a, vvd &x);
+vvd calc_r_softmax (vvd &x);
+vvd calc_r_ReLU (vvd &a);
 vvd calc_r_bias (vvd &b, vvd &delta);
 void updateWeights(vvd &w, vvd &rw, double eta);
 
@@ -177,20 +177,33 @@ int main() {
         }
 
         //forward propagation
-        //a1 = x0 * w1 + b1
-        // nn[0].a = matrix_add(matrix_multi(x0, nn[0].w), nn[0].b);
-        // nn[0].x = hm_ReLU(nn[0].a);
-        // //a2 = x1 * w2 + b2
-        // nn[1].a = matrix_add(matrix_multi(nn[0].x, nn[1].w), nn[1].b);
-        // nn[1].x = hm_ReLU(nn[1].a);
-        // //a3 = x2 * w3 + b3
-        // nn[2].a = matrix_add(matrix_multi(nn[1].x, nn[2].w), nn[2].b);
-        // nn[2].x = hm_softmax(nn[2].a);
-
         for (int k=0; k<depth; ++k) {
             if (k == 0) nn[k].a = matrix_add(matrix_multi(x0, nn[k].w), nn[k].b);
             else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
-            nn[k].x = hm_ReLU(nn[k].a);
+            if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+            else nn[k].x = hm_softmax(nn[k].a);
+        }
+        
+        //back propagation
+        for (int k=depth-1; k>=0; --k) {
+            if (k == depth-1) {
+                r_hL_x3 = calc_r_cross_entropy(nn[k].x, t);
+                r_h3_a3 = calc_r_softmax(nn[k].x);
+                nn[k].delta = matrix_adm_multi(r_hL_x3, r_h3_a3);
+            } else {
+                r_h2_a2 = calc_r_ReLU(nn[k].a);
+                nn[k].delta = matrix_adm_multi(r_h2_a2, matrix_multi(nn[k+1].delta, matrix_t(nn[k+1].w)));
+            }
+            nn[k].rb = calc_r_bias(nn[k].b, nn[k].delta);
+            if (k != 0) nn[k].rw = matrix_multi(matrix_t(nn[k-1].x), nn[k].delta);
+            else nn[k].rw = matrix_multi(matrix_t(x0), nn[k].delta);
+        }
+
+        //update parameters
+        if ((i+1) % 800 == 0) eta *= attenuation;
+        for (int k=0; k<depth; ++k) {
+            updateWeights(nn[k].w, nn[k].rw, eta);
+            updateWeights(nn[k].b, nn[k].rb, eta);
         }
         
         //たまに性能の確認
@@ -200,31 +213,6 @@ int main() {
             cout << "accuracy rate ";
             cout << calcAccuracyRate(nn[2].x, t0) << endl;
         }
-
-        //back propagation
-        r_hL_x3 = calc_r_cross_entropy(nn[2].x, t);
-        r_h3_a3 = calc_r_softmax(nn[2].a, nn[2].x);
-        nn[2].delta = matrix_adm_multi(r_hL_x3, r_h3_a3);
-        nn[2].rb = calc_r_bias(nn[2].b, nn[2].delta);
-        nn[2].rw = matrix_multi(matrix_t(nn[1].x), nn[2].delta);
-
-        r_h2_a2 = calc_r_ReLU(nn[1].a, nn[1].x);
-        nn[1].delta = matrix_adm_multi(r_h2_a2, matrix_multi(nn[2].delta, matrix_t(nn[2].w)));
-        nn[1].rb = calc_r_bias(nn[1].b, nn[1].delta);
-        nn[1].rw = matrix_multi(matrix_t(nn[0].x), nn[1].delta);
-
-        r_h1_a1 = calc_r_ReLU(nn[0].a, nn[0].x);
-        nn[0].delta = matrix_adm_multi(r_h1_a1, matrix_multi(nn[1].delta, matrix_t(nn[1].w)));
-        nn[0].rb = calc_r_bias(nn[0].b, nn[0].delta);
-        nn[0].rw = matrix_multi(matrix_t(x0), nn[0].delta);
-
-        if ((i+1) % 800 == 0) eta *= attenuation;
-        updateWeights(nn[0].w, nn[0].rw, eta);
-        updateWeights(nn[1].w, nn[1].rw, eta);
-        updateWeights(nn[2].w, nn[2].rw, eta);
-        updateWeights(nn[0].b, nn[0].rb, eta);
-        updateWeights(nn[1].b, nn[1].rb, eta);
-        updateWeights(nn[2].b, nn[2].rb, eta);
     }
 
     // train set---------------------------------
@@ -466,11 +454,9 @@ vvd expansion_bias(vvd &b, int batch) {
 
 vvd calc_r_cross_entropy(vvd &x, vvd &t) {
     int n = x.size(), m = x[0].size();
-    // double ips = 0.01, fLup, fLdown;
     vvd tmp(n, vd(m, 0));
     for (int s=0; s<n; ++s) {
         for (int j=0; j<m; ++j) {
-            // tmp[s][j] = -t[s][j] / x[s][j];
             for (int k=0; k<m; ++k) {
                 if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
                 else tmp[s][j] += t[s][k] / (x[s][k]);
@@ -480,8 +466,8 @@ vvd calc_r_cross_entropy(vvd &x, vvd &t) {
     }
     return tmp;
 }
-vvd calc_r_softmax (vvd &a, vvd &x) {
-    int n = a.size(), m = a[0].size();
+vvd calc_r_softmax (vvd &x) {
+    int n = x.size(), m = x[0].size();
     vvd tmp(n, vd(m, 0));
     for (int s=0; s<n; ++s) {
         for (int j=0; j<m; ++j) {
@@ -491,7 +477,7 @@ vvd calc_r_softmax (vvd &a, vvd &x) {
     return tmp;
 }
 
-vvd calc_r_ReLU (vvd &a, vvd &x) {
+vvd calc_r_ReLU (vvd &a) {
     int n = a.size(), m = a[0].size();
     vvd tmp(n, vd(m, 0));
     for (int s=0; s<n; ++s) {
