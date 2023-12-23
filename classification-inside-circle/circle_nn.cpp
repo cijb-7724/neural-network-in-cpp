@@ -70,7 +70,7 @@ uniform_real_distribution<> distCircle(-6, 6);
 //  ##   ##  ##  ##    ####    ##   ##
 
 int main() {
-    vvd x;
+    vvd x, t;
     double eta = 0.1, attenuation = 0.7;
     int n = 1000;
     int show_interval = 1000;
@@ -108,7 +108,6 @@ int main() {
     //前半半分は円の内側，後半半分は円の外側
     x = make_data(n);
     //教師ラベルの作成 {1,0}内側
-    vvd t;
     for (int i=0; i<n/2; ++i) t.push_back({1, 0});//inside
     for (int i=0; i<n/2; ++i) t.push_back({0, 1});//outside
     
@@ -137,7 +136,7 @@ int main() {
         for (int k=depth-1; k>=0; --k) {
             if (k == depth-1) {
                 vvd r_fL_xk, r_hk_ak;
-                r_fL_xk = calc_r_cross_entropy(nn[k].x, t);
+                r_fL_xk = calc_r_cross_entropy(nn[k].x, t0);
                 r_hk_ak = calc_r_softmax(nn[k].x);
                 nn[k].delta = matrix_adm_multi(r_fL_xk, r_hk_ak);
             } else {
