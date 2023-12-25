@@ -57,7 +57,7 @@ typedef struct {
 
 random_device rd;
 long long SEED = 0;//実行毎に同じ乱数生成
-// long long seed = rd();//実行毎に異なる
+// long long SEED = rd();//実行毎に異なる
 mt19937 engine(SEED);
 uniform_real_distribution<> distCircle(-6, 6);
 
@@ -71,12 +71,18 @@ uniform_real_distribution<> distCircle(-6, 6);
 
 int main() {
     vvd x, t;
-    double eta = 0.1, attenuation = 0.7;
+    // double eta = 0.1, attenuation = 0.7;
+    double eta = 0.1, attenuation = 1;
+    
     int n = 1000;
-    int show_interval = 1000;
+    // int show_interval = 1000;
+    // int learning_plan = 2000;
+    // int loop = 9500;
+    // int batch_size = 100;
+    int show_interval = 10;
     int learning_plan = 2000;
-    int loop = 3500;
-    int batch_size = 100;
+    int loop = 4;
+    int batch_size = 10;
     // vector<int> nn_form = {2, 3, 3, 2};
     vector<int> nn_form = {2, 10, 10, 10, 2};
     int depth = nn_form.size()-1;
@@ -130,6 +136,9 @@ int main() {
             else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
             if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
             else nn[k].x = hm_softmax(nn[k].a);
+
+            cout << "i = " << i << ", in forward propagation x " << k << endl;
+            matrix_show(nn[k].x);
         }
         
         //back propagation
