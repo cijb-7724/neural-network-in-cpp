@@ -54,7 +54,7 @@ typedef struct {
 
 random_device rd;
 long long SEED = 0;//実行毎に同じ乱数生成
-// long long seed = rd();//実行毎に異なる
+// long long SEED = rd();//実行毎に異なる
 mt19937 engine(SEED);
 uniform_real_distribution<> distCircle(-6, 6);
 
@@ -159,20 +159,23 @@ int main() {
     cout << target.size() << ' ' << target[0].size() << endl;
     ////////////////////////////////////////////////////////////////
     int train_size = 105, test_size = 45;
+    int all_size = train_size + test_size;
     vvd train_x, train_t, test_x, test_t;
     // return 0;
+    vector<int> id;
+    id.assign(all_size/3, 0);
+    for (int i=0; i<all_size/3; ++i) id[i] = i;
+
     for (int i=0; i<3; ++i) {
         vvd tmpX, tmpT;
-        for (int j=0; j<50; ++j) {
-            tmpX.push_back(data[i*50+j]);
-            tmpT.push_back(target[i*50+j]);
+        for (int j=0; j<all_size/3; ++j) {
+            tmpX.push_back(data[i*(all_size/3)+j]);
+            tmpT.push_back(target[i*(all_size/3)+j]);
         }
-        vector<int> id(50);
-        for (int i=0; i<50; ++i) id[i] = i;
         shuffle(id.begin(), id.end(), engine);
         shuffle_VVD(tmpX, id);
         shuffle_VVD(tmpT, id);
-        for (int j=0; j<50; ++j) {
+        for (int j=0; j<all_size/3; ++j) {
             if (j < train_size/3) {
                 train_x.push_back(tmpX[j]);
                 train_t.push_back(tmpT[j]);
@@ -191,21 +194,21 @@ int main() {
     int n = 150;
     int show_interval = 100;
     int learning_plan = 100;
-    int loop = 500;
-    int batch_size = 10;
+    int loop = 4;
+    int batch_size = 5;
     vector<int> nn_form = {4, 10, 3};
     // vector<int> nn_form = {4, 6, 8, 6, 3};
     int depth = nn_form.size()-1;
 
     vector<layer_t> nn(depth);
 
-    vector<int> id(train_size);
+    id.assign(train_size, 0);
     for (int i=0; i<train_size; ++i) id[i] = i;
     
     //Heの初期化
     for (int i=0; i<depth; ++i) {
         nn[i].w.assign(nn_form[i], vd(nn_form[i+1], 0));
-        nn[i].b.assign(batch_size, vd(nn_form[i+1], 0));
+        nn[i].b.assign(1, vd(nn_form[i+1], 0));
         make_initial_value(nn[i].w, 0, sqrt(2.0/nn_form[i]));
         make_initial_value(nn[i].b, 0, sqrt(2.0/nn_form[i]));
         nn[i].b = expansion_bias(nn[i].b, batch_size);
@@ -224,13 +227,18 @@ int main() {
     for (int i=0; i<loop; ++i) {
         // cout << i << endl;
         //mini batchの作成
-        vvd x0, t0;
         shuffle(id.begin(), id.end(), engine);
-        shuffle_VVD(train_t, id);
         shuffle_VVD(train_x, id);
-
+        shuffle_VVD(train_t, id);
+        // cout << "i = " << i << " shuffled data set" << endl;
+        // cout << "x train" << endl;
+        // matrix_show(train_x);
+        // cout << "t train" << endl;
+        // matrix_show(train_t);
+        
         //全データから先頭batchi_sizeだけmini batchを取得
-        for (int j=0; j<batch_size; ++j) {
+        vvd x0, t0;
+        for (int j=0; j<min(batch_size, train_size); ++j) {
             x0.push_back(train_x[j]);
             t0.push_back(train_t[j]);
         }
@@ -239,6 +247,13 @@ int main() {
         // cout << t0.size() << endl;
         // matrix_show(x0);
         // matrix_show(t0);
+        cout << "=========================================" << endl;
+        cout << "i = " << i << " before forward propagation parameters" << endl;
+        cout << "w" << endl;
+        for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
+        cout << "b" << endl;
+        for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
+        cout << "=========================================" << endl;
         
 
         //forward propagation
@@ -247,16 +262,25 @@ int main() {
             else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
             if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
             else nn[k].x = hm_softmax(nn[k].a);
+
+            cout << "i = " << i << ", in forward propagation x " << k << endl;
+            matrix_show(nn[k].x);
         }
         cout << "size x" << endl;
         cout << nn[depth-1].x.size() << ' ' << nn[depth-1].x[0].size() << endl;
         matrix_show(nn[depth-1].x);
-        
+        cout << "T size " << t0.size() << " " << t0[0].size() << endl;
+        matrix_show(t0);
+        cout << i << " cross entropy ";
+        cout << hm_cross_entropy(nn[depth-1].x, t0) << endl;
+
         //back propagation
         for (int k=depth-1; k>=0; --k) {
             if (k == depth-1) {
                 vvd r_fL_xk, r_hk_ak;
                 r_fL_xk = calc_r_cross_entropy(nn[k].x, t0);
+                cout << "corss entropy" << endl;
+                matrix_show(r_fL_xk);
                 r_hk_ak = calc_r_softmax(nn[k].x);
                 nn[k].delta = matrix_adm_multi(r_fL_xk, r_hk_ak);
             } else {
@@ -557,7 +581,7 @@ double hm_cross_entropy(vvd &y, vvd &t) {
     double sum = 0;
     for (int i=0; i<n; ++i) {
         for (int j=0; j<m; ++j) {
-            if (y[i][j] <= 0) y[i][j] = 1e-5;
+            // if (y[i][j] <= 0) y[i][j] = 1e-5;
             if (t[i][j]) sum += t[i][j] * log(y[i][j]);
         }
     }
@@ -598,7 +622,7 @@ vvd calc_r_cross_entropy(vvd &x, vvd &t) {
                 if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
                 else tmp[s][j] += t[s][k] / (x[s][k]);
             }
-            tmp[s][j] /= n;
+            // tmp[s][j] /= n;
         }
     }
     return tmp;
