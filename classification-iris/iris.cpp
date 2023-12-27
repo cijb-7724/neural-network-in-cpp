@@ -112,24 +112,24 @@ test 45:15, 15, 15
 50, 50, 50
 */
 
-vvd normalization(const vvd & data) {
-    int n = data.size();
-    int m = data[0].size();
-    vvd ret(n, vd(m));
-    for (int j=0; j<m; ++j) {
-        vd tmp;
-        for (int i=0; i<n; ++i) {
-            // cout << data[j][i] << ' ';
-            tmp.push_back(data[i][j]);
-        }
-        double mn = *min_element(tmp.begin(), tmp.end());
-        double mx = *max_element(tmp.begin(), tmp.end());
-        for (int i=0; i<n; ++i) {
-            ret[i][j] = (tmp[i] - mn) / (mx - mn);
-        }
-    }
-    return ret;
-}
+// vvd normalization(const vvd & data) {
+//     int n = data.size();
+//     int m = data[0].size();
+//     vvd ret(n, vd(m));
+//     for (int j=0; j<m; ++j) {
+//         vd tmp;
+//         for (int i=0; i<n; ++i) {
+//             // cout << data[j][i] << ' ';
+//             tmp.push_back(data[i][j]);
+//         }
+//         double mn = *min_element(tmp.begin(), tmp.end());
+//         double mx = *max_element(tmp.begin(), tmp.end());
+//         for (int i=0; i<n; ++i) {
+//             ret[i][j] = (tmp[i] - mn) / (mx - mn);
+//         }
+//     }
+//     return ret;
+// }
 
 int main() {
     //data import
@@ -181,29 +181,29 @@ int main() {
     learnの中，各ステップでシャッフルする．
     */
     
-    cout << "train_x" << endl;
-    cout << train_x.size() << ' ' << train_x[0].size() << endl;
-    matrix_show(train_x);
-    cout << "train_t" << endl;
-    cout << train_t.size() << ' ' << train_t[0].size() << endl;
-    matrix_show(train_t);
+    // cout << "train_x" << endl;
+    // cout << train_x.size() << ' ' << train_x[0].size() << endl;
+    // matrix_show(train_x);
+    // cout << "train_t" << endl;
+    // cout << train_t.size() << ' ' << train_t[0].size() << endl;
+    // matrix_show(train_t);
 
-    cout << "test_x" << endl;
-    cout << test_x.size() << ' ' << test_x[0].size() << endl;
-    matrix_show(test_x);
-    cout << "test_t" << endl;
-    cout << test_t.size() << ' ' << test_t[0].size() << endl;
-    matrix_show(test_t);
+    // cout << "test_x" << endl;
+    // cout << test_x.size() << ' ' << test_x[0].size() << endl;
+    // matrix_show(test_x);
+    // cout << "test_t" << endl;
+    // cout << test_t.size() << ' ' << test_t[0].size() << endl;
+    // matrix_show(test_t);
     
     
-    double eta = 0.1, attenuation = 0.7;
+    double eta = 0.01, attenuation = 0.5;
     int n = 150;
-    int show_interval = 100;
-    int learning_plan = 10;
-    int loop = 4;
-    int batch_size = 5;
+    int show_interval = 1000;
+    int learning_plan = 50;
+    int loop = 400;
+    int batch_size = 15; //<train_size
     vector<int> nn_form = {4, 10, 3};
-    // vector<int> nn_form = {4, 6, 8, 6, 3};
+    // vector<int> nn_form = {4, 20, 3};
     int depth = nn_form.size()-1;
 
     vector<layer_t> nn(depth);
@@ -250,7 +250,7 @@ int main() {
         
         //全データから先頭batchi_sizeだけmini batchを取得
         vvd x0, t0;
-        for (int j=0; j<min(batch_size, train_size); ++j) {
+        for (int j=0; j<batch_size; ++j) {
             x0.push_back(train_x[j]);
             t0.push_back(train_t[j]);
         }
@@ -366,21 +366,24 @@ int main() {
     cout << calc_accuracy_rate(nn[depth-1].x, test_t) << endl;
     for (int i=0; i<40; ++i) cout << "=";
     cout << endl;
+    // matrix_show(test_x);
+    // matrix_show(test_t);
+    matrix_show(nn[depth-1].x);
 
     //最後のパラメータの表示
-    cout << "last parameters" << endl;
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
-    for (int i=0; i<depth; ++i) {
-        cout << "w " << i+1 << endl; 
-        matrix_show(nn[i].w);
-    }
-    for (int i=0; i<depth; ++i) {
-        cout << "b " << i+1 << endl;
-        matrix_show_b(nn[i].b);
-    }
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
+    // cout << "last parameters" << endl;
+    // for (int i=0; i<40; ++i) cout << "=";
+    // cout << endl;
+    // for (int i=0; i<depth; ++i) {
+    //     cout << "w " << i+1 << endl; 
+    //     matrix_show(nn[i].w);
+    // }
+    // for (int i=0; i<depth; ++i) {
+    //     cout << "b " << i+1 << endl;
+    //     matrix_show_b(nn[i].b);
+    // }
+    // for (int i=0; i<40; ++i) cout << "=";
+    // cout << endl;
 }
 
 
@@ -431,10 +434,13 @@ void make_initial_value(vvd &table, double mu, double sig) {
 
 
 double calc_accuracy_rate(vvd &y, vvd &t) {
-    int n = y.size();
+    int n = y.size(), m = y[0].size();
     double sum = 0;
     for (int i=0; i<n; ++i) {
-        if (y[i][0] < y[i][1] && t[i][1] || y[i][0] > y[i][1] && t[i][0]) sum += 1;
+        double mx = *max_element(y[i].begin(), y[i].end());
+        for (int j=0; j<m; ++j) {
+            if (y[i][j] == mx && t[i][j]) sum += 1;
+        }
     }
     return sum / n;
 }
@@ -563,6 +569,24 @@ vvd matrix_t(const vvd &a) {
         }
     }
     return t;
+}
+// c = a .* b, a:matrix, b:tensor
+vvd matrix_adm_multi_tensor(const vvd &a, const vvvd &b) {
+    if (a.size() != b.size()) {
+        cout << "The matrix sizes are different. 1dimention" << endl;
+        return {{}};
+    }
+    if (a[0].size() != b[0].size()) {
+        cout << "The matrix sizes are different. 2dimention" << endl;
+    }
+    int n = a.size(), m = a[0].size();
+    vvd ret(n, vd(m, 0));
+    for (int i=0; i<n; ++i) {
+        vvd tmp = {a[i]};
+        tmp = matrix_multi(tmp, b[i]);
+        ret[i] = tmp[0];
+    }
+    return ret;
 }
 
 
