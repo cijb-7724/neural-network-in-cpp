@@ -77,13 +77,13 @@ uniform_real_distribution<> distCircle(-6, 6);
 
 int main() {
     vvd x, t;
-    double eta = 0.3, attenuation = 0.5;
+    double eta = 0.1, attenuation = 0.8;
     int n = 1000;
     int show_interval = 1000;
     int learning_plan = 2000;
-    int loop = 20000;
+    int loop = 4000;
     int batch_size = 100;
-    vector<int> nn_form = {2, 5, 5, 3};
+    vector<int> nn_form = {2, 3, 4, 4, 3};
     // vector<int> nn_form = {2, 10, 10, 10, 2};
     int depth = nn_form.size()-1;
 
@@ -115,7 +115,7 @@ int main() {
     //教師ラベルの作成 {1,0,0}:1番内側
     for (int i=0; i<n/3; ++i) t.push_back({1, 0, 0});//class1
     for (int i=0; i<n/3; ++i) t.push_back({0, 1, 0});//class2
-    for (int i=0; i<=n/3 && t.size()<n; ++i) t.push_back({0, 0, 1});//class3
+    for (int i=0; i<=n/3; ++i) t.push_back({0, 0, 1});//class3
 
     cout << x.size() << ' ' << x[0].size() << endl;
     cout << t.size() << ' ' << t[0].size() << endl;
@@ -150,7 +150,6 @@ int main() {
                 vvvd r_hk_ak;
                 r_fL_xk = calc_r_cross_entropy(nn[k].x, t0);
                 r_hk_ak = calc_r_softmax(nn[k].x);
-                //ここを結構変更するので後でいい感じに修正する．
                 nn[k].delta = matrix_adm_multi_tensor(r_fL_xk, r_hk_ak);
             } else {
                 vvd r_h_a;
@@ -201,7 +200,7 @@ int main() {
 
     // test set-------------------------------------
     cout << "=========================================" << endl;
-    cout << "test" << endl;
+    cout << "test set" << endl;
     x = make_data(n);
     t.assign(0, vd(0));
     for (int i=0; i<n/3; ++i) t.push_back({1, 0, 0});//class1
@@ -297,10 +296,13 @@ void make_initial_value(vvd &table, double mu, double sig) {
 
 
 double calc_accuracy_rate(vvd &y, vvd &t) {
-    int n = y.size();
+    int n = y.size(), m = y[0].size();
     double sum = 0;
     for (int i=0; i<n; ++i) {
-        if (y[i][0] < y[i][1] && t[i][1] || y[i][0] > y[i][1] && t[i][0]) sum += 1;
+        double mx = *max_element(y[i].begin(), y[i].end());
+        for (int j=0; j<m; ++j) {
+            if (y[i][j] == mx && t[i][j]) sum += 1;
+        }
     }
     return sum / n;
 }
