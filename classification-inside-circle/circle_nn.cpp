@@ -10,10 +10,10 @@
 #include <algorithm>
 #include <random>
 
-
 using namespace std;
 using vd = vector<double>;
 using vvd = vector<vector<double>>;
+using vvvd = vector<vector<vector<double>>>;
 
 //function
 bool judge_term(double x, double y);
@@ -26,6 +26,7 @@ void matrix_show(vvd &a);
 void matrix_show_b(vvd &a);
 vvd matrix_multi(const vvd &a, const vvd &b);
 vvd matrix_adm_multi(const vvd &a, const vvd &b);
+vvd matrix_adm_multi_tensor(const vvd &a, const vvvd &b);
 vvd matrix_add(const vvd &a, const vvd &b);
 vvd matrix_t(const vvd &a);
 //ACTIVATION
@@ -39,7 +40,7 @@ double hm_cross_entropy(vvd &y, vvd &t);
 //BACK PROPAGATION
 vvd expansion_bias(vvd &b, int batch);
 vvd calc_r_cross_entropy(vvd &x, vvd &t);
-vvd calc_r_softmax (vvd &x);
+vvvd calc_r_softmax(vvd &x);
 vvd calc_r_ReLU (vvd &a);
 vvd calc_r_bias (vvd &b, vvd &delta);
 void updateWeights(vvd &w, vvd &rw, double eta);
@@ -56,7 +57,7 @@ typedef struct {
 
 random_device rd;
 long long SEED = 0;//実行毎に同じ乱数生成
-// long long SEED = rd();//実行毎に異なる
+// long long SEED = rd();//実行毎に異なる乱数生成
 mt19937 engine(SEED);
 uniform_real_distribution<> distCircle(-6, 6);
 
@@ -70,20 +71,13 @@ uniform_real_distribution<> distCircle(-6, 6);
 
 int main() {
     vvd x, t;
-    // double eta = 0.1, attenuation = 0.7;
-    double eta = 0.1, attenuation = 1;
-    
+    double eta = 0.1, attenuation = 0.6;
     int n = 1000;
-    // int show_interval = 1000;
-    // int learning_plan = 2000;
-    // int loop = 9500;
-    // int batch_size = 100;
     int show_interval = 1000;
     int learning_plan = 2000;
-    int loop = 4000;
-    int batch_size = 10;
-    // vector<int> nn_form = {2, 3, 3, 2};
-    vector<int> nn_form = {2, 10, 10, 10, 2};
+    int loop = 9500;
+    int batch_size = 100;
+    vector<int> nn_form = {2, 3, 3, 2};
     int depth = nn_form.size()-1;
 
     vector<layer_t> nn(depth);
@@ -100,19 +94,25 @@ int main() {
         nn[i].b = expansion_bias(nn[i].b, batch_size);
     }
     
-    //初期のパラメータ
-    cout << "=========================================" << endl;
+    //初期のパラメータの表示
     cout << "first parameters" << endl;
-    cout << "w" << endl;
-    for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
-    cout << "b" << endl;
-    for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    for (int i=0; i<depth; ++i) {
+        cout << "w " << i+1 << endl; 
+        matrix_show(nn[i].w);
+    }
+    for (int i=0; i<depth; ++i) {
+        cout << "b " << i+1 << endl;
+        matrix_show_b(nn[i].b);
+    }
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
     
     //訓練セットの作成
-    //前半半分は円の内側，後半半分は円の外側
+    //前半半分は円の内側 後半半分は円の外側
     x = make_data(n);
-    //教師ラベルの作成 {1,0}内側
+    //教師ラベルの作成 {1,0}内側 {0,1}外側
     for (int i=0; i<n/2; ++i) t.push_back({1, 0});//inside
     for (int i=0; i<n/2; ++i) t.push_back({0, 1});//outside
     
@@ -123,7 +123,7 @@ int main() {
         shuffle(id.begin(), id.end(), engine);
         shuffle_VVD(t, id);
         shuffle_VVD(x, id);
-        //全データから先頭batchi_sizeだけmini batchを取得
+        //全データから先頭batchi_size個だけmini batchを取得
         for (int j=0; j<batch_size; ++j) {
             x0.push_back(x[j]);
             t0.push_back(t[j]);
@@ -136,17 +136,18 @@ int main() {
             if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
             else nn[k].x = hm_softmax(nn[k].a);
 
-            cout << "i = " << i << ", in forward propagation x " << k << endl;
-            matrix_show(nn[k].x);
+            // cout << "i = " << i << ", in forward propagation x " << k << endl;
+            // matrix_show(nn[k].x);
         }
         
         //back propagation
         for (int k=depth-1; k>=0; --k) {
             if (k == depth-1) {
-                vvd r_fL_xk, r_hk_ak;
+                vvd r_fL_xk;
+                vvvd r_hk_ak;
                 r_fL_xk = calc_r_cross_entropy(nn[k].x, t0);
                 r_hk_ak = calc_r_softmax(nn[k].x);
-                nn[k].delta = matrix_adm_multi(r_fL_xk, r_hk_ak);
+                nn[k].delta = matrix_adm_multi_tensor(r_fL_xk, r_hk_ak);
             } else {
                 vvd r_h_a;
                 r_h_a = calc_r_ReLU(nn[k].a);
@@ -158,11 +159,12 @@ int main() {
         }
 
         //update parameters
-        if ((i+1) % learning_plan == 0) eta *= attenuation;
         for (int k=0; k<depth; ++k) {
             updateWeights(nn[k].w, nn[k].rw, eta);
             updateWeights(nn[k].b, nn[k].rb, eta);
         }
+        //学習率の更新
+        if ((i+1) % learning_plan == 0) eta *= attenuation;
 
         //たまに性能の確認
         if (i % show_interval == 0) {
@@ -174,12 +176,12 @@ int main() {
     }
 
     // train set---------------------------------
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
     cout << "train set" << endl;
     for (int i=0; i<depth; ++i) {
         nn[i].b = expansion_bias(nn[i].b, n);
     }
-
     //forward propagation
     for (int k=0; k<depth; ++k) {
         if (k == 0) nn[k].a = matrix_add(matrix_multi(x, nn[k].w), nn[k].b);
@@ -187,20 +189,25 @@ int main() {
         if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
         else nn[k].x = hm_softmax(nn[k].a);
     }
-
     cout << " cross entropy ";
     cout << hm_cross_entropy(nn[depth-1].x, t) << endl;
     cout << "accuracy rate ";
     cout << calc_accuracy_rate(nn[depth-1].x, t) << endl;
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 
     // test set-------------------------------------
-    cout << "=========================================" << endl;
-    cout << "test" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    cout << "test set" << endl;
+    //新しいデータをランダムに作成
     x = make_data(n);
+    //教師ラベルも作成
     t.assign(0, vd(0));
     for (int i=0; i<n/2; ++i) t.push_back({1, 0});
     for (int i=0; i<n/2; ++i) t.push_back({0, 1});
+    
+    //test set は単に順伝播させて，正解率を見るだけだからシャッフルは必要ない
 
     //forward propagation
     for (int k=0; k<depth; ++k) {
@@ -209,22 +216,28 @@ int main() {
         if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
         else nn[k].x = hm_softmax(nn[k].a);
     }
-
     cout << " cross entropy ";
     cout << hm_cross_entropy(nn[depth-1].x, t) << endl;
     cout << "accuracy rate ";
     cout << calc_accuracy_rate(nn[depth-1].x, t) << endl;
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 
-    cout << "=========================================" << endl;
+    //最後のパラメータの表示
     cout << "last parameters" << endl;
-    cout << "w" << endl;
-    for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
-    cout << "b" << endl;
-    for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    for (int i=0; i<depth; ++i) {
+        cout << "w " << i+1 << endl; 
+        matrix_show(nn[i].w);
+    }
+    for (int i=0; i<depth; ++i) {
+        cout << "b " << i+1 << endl;
+        matrix_show_b(nn[i].b);
+    }
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 }
-
 
 //  #######  ##   ##  ##   ##    ####   ######    ####     #####   ##   ##
 //   ##   #  ##   ##  ###  ##   ##  ##  # ## #     ##     ##   ##  ###  ##
@@ -235,6 +248,8 @@ int main() {
 //  ####      #####   ##   ##    ####    ####     ####     #####   ##   ##
 
 bool judge_term(double x, double y){ return (x*x + y*y < 9) ? true : false;}
+// bool judge_term(double x, double y) { return (x * y > 0 ? true : false);}//xor
+// bool judge_term(double x, double y) { return (x*y < 0 && x < 0) ? true : false;}//linear
 //条件を満たす点と満たさない点をn/2個ずつ作る
 vvd make_data(int n) {
     vvd x;
@@ -271,12 +286,14 @@ void make_initial_value(vvd &table, double mu, double sig) {
     }
 }
 
-
 double calc_accuracy_rate(vvd &y, vvd &t) {
-    int n = y.size();
+    int n = y.size(), m = y[0].size();
     double sum = 0;
     for (int i=0; i<n; ++i) {
-        if (y[i][0] < y[i][1] && t[i][1] || y[i][0] > y[i][1] && t[i][0]) sum += 1;
+        double mx = *max_element(y[i].begin(), y[i].end());
+        for (int j=0; j<m; ++j) {
+            if (y[i][j] == mx && t[i][j]) sum += 1;
+        }
     }
     return sum / n;
 }
@@ -291,7 +308,6 @@ void shuffle_VVD(vvd &v, vector<int> &id) {
     }
     v = tmp;
 }
-
 
 //  ##   ##    ##     ######   ######    ####    ##  ##
 //  ### ###   ####    # ## #    ##  ##    ##     ##  ##
@@ -384,6 +400,24 @@ vvd matrix_t(const vvd &a) {
         }
     }
     return t;
+}
+// c = a .* b, a:matrix, b:tensor
+vvd matrix_adm_multi_tensor(const vvd &a, const vvvd &b) {
+    if (a.size() != b.size()) {
+        cout << "The matrix sizes are different. 1dimention" << endl;
+        return {{}};
+    }
+    if (a[0].size() != b[0].size()) {
+        cout << "The matrix sizes are different. 2dimention" << endl;
+    }
+    int n = a.size(), m = a[0].size();
+    vvd ret(n, vd(m, 0));
+    for (int i=0; i<n; ++i) {
+        vvd tmp = {a[i]};
+        tmp = matrix_multi(tmp, b[i]);
+        ret[i] = tmp[0];
+    }
+    return ret;
 }
 
 
@@ -488,15 +522,21 @@ vvd calc_r_cross_entropy(vvd &x, vvd &t) {
     }
     return tmp;
 }
-vvd calc_r_softmax (vvd &x) {
+//rx_k/ra_j
+//m class 分類
+//m次正方行列を返す
+vvvd calc_r_softmax(vvd &x) {
     int n = x.size(), m = x[0].size();
-    vvd tmp(n, vd(m, 0));
+    vvvd ret(n, vvd(m, vd(m, 0)));
     for (int s=0; s<n; ++s) {
-        for (int j=0; j<m; ++j) {
-            tmp[s][j] = x[s][j]*(1-x[s][j]);
+        for (int i=0; i<m; ++i) {
+            for (int j=0; j<m; ++j) {
+                if (i == j) ret[s][i][j] = x[s][i]*(1 - x[s][j]);
+                else ret[s][i][j] = x[s][i]*(0 - x[s][j]);
+            }
         }
     }
-    return tmp;
+    return ret;
 }
 
 vvd calc_r_ReLU (vvd &a) {

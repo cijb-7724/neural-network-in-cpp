@@ -1,20 +1,9 @@
-/*
-入力(p, q)が
-中心原点，半径３の円の
-内側にあるか外側にあるかを判定する
-ニューラルネットワーク
-*/
-
 #include <iostream>
 #include <vector>
 #include <algorithm>
 #include <random>
-#include <fstream>//
-#include <sstream>//iranaikamo
 
 using namespace std;
-using vi = vector<int>;
-using vvi = vector<vector<int>>;
 using vd = vector<double>;
 using vvd = vector<vector<double>>;
 using vvvd = vector<vector<vector<double>>>;
@@ -61,10 +50,9 @@ typedef struct {
 
 random_device rd;
 long long SEED = 0;//実行毎に同じ乱数生成
-// long long SEED = rd();//実行毎に異なる
+// long long SEED = rd();//実行毎に異なる乱数生成
 mt19937 engine(SEED);
 uniform_real_distribution<> distCircle(-6, 6);
-
 
 //  ##   ##    ##      ####    ##   ##
 //  ### ###   ####      ##     ###  ##
@@ -74,17 +62,15 @@ uniform_real_distribution<> distCircle(-6, 6);
 //  ##   ##  ##  ##     ##     ##   ##
 //  ##   ##  ##  ##    ####    ##   ##
 
-
 int main() {
     vvd x, t;
     double eta = 0.1, attenuation = 0.8;
     int n = 1000;
     int show_interval = 1000;
-    int learning_plan = 2000;
-    int loop = 4000;
+    int learning_plan = 1000;
+    int loop = 5000;
     int batch_size = 100;
     vector<int> nn_form = {2, 3, 4, 4, 3};
-    // vector<int> nn_form = {2, 10, 10, 10, 2};
     int depth = nn_form.size()-1;
 
     vector<layer_t> nn(depth);
@@ -101,24 +87,30 @@ int main() {
         nn[i].b = expansion_bias(nn[i].b, batch_size);
     }
     
-    //初期のパラメータ
-    cout << "=========================================" << endl;
+    //初期のパラメータの表示
     cout << "first parameters" << endl;
-    cout << "w" << endl;
-    for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
-    cout << "b" << endl;
-    for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
-    cout << "=========================================" << endl;
-    
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    for (int i=0; i<depth; ++i) {
+        cout << "w " << i+1 << endl; 
+        matrix_show(nn[i].w);
+    }
+    for (int i=0; i<depth; ++i) {
+        cout << "b " << i+1 << endl;
+        matrix_show_b(nn[i].b);
+    }
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+
     //訓練セットの作成
+    //半径2の内側 半径4の内側 その外側
     x = make_data(n);
-    //教師ラベルの作成 {1,0,0}:1番内側
+    //教師ラベルの作成
+    //半径2の内側{1,0,0} 半径4の内側{0,1,0} その外側{1,0,0}
     for (int i=0; i<n/3; ++i) t.push_back({1, 0, 0});//class1
     for (int i=0; i<n/3; ++i) t.push_back({0, 1, 0});//class2
     for (int i=0; i<=n/3; ++i) t.push_back({0, 0, 1});//class3
 
-    cout << x.size() << ' ' << x[0].size() << endl;
-    cout << t.size() << ' ' << t[0].size() << endl;
     //learn
     for (int i=0; i<loop; ++i) {
         //mini batchの作成
@@ -126,7 +118,7 @@ int main() {
         shuffle(id.begin(), id.end(), engine);
         shuffle_VVD(t, id);
         shuffle_VVD(x, id);
-        //全データから先頭batchi_sizeだけmini batchを取得
+        //全データから先頭batchi_sizeだけ個mini batchを取得
         for (int j=0; j<batch_size; ++j) {
             x0.push_back(x[j]);
             t0.push_back(t[j]);
@@ -138,9 +130,6 @@ int main() {
             else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
             if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
             else nn[k].x = hm_softmax(nn[k].a);
-
-            // cout << "i = " << i << ", in forward propagation x " << k << endl;
-            // matrix_show(nn[k].x);
         }
         
         //back propagation
@@ -162,11 +151,12 @@ int main() {
         }
 
         //update parameters
-        if ((i+1) % learning_plan == 0) eta *= attenuation;
         for (int k=0; k<depth; ++k) {
             updateWeights(nn[k].w, nn[k].rw, eta);
             updateWeights(nn[k].b, nn[k].rb, eta);
         }
+        //学習率の更新
+        if ((i+1) % learning_plan == 0) eta *= attenuation;
 
         //たまに性能の確認
         if (i % show_interval == 0) {
@@ -178,12 +168,12 @@ int main() {
     }
 
     // train set---------------------------------
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
     cout << "train set" << endl;
     for (int i=0; i<depth; ++i) {
         nn[i].b = expansion_bias(nn[i].b, n);
     }
-
     //forward propagation
     for (int k=0; k<depth; ++k) {
         if (k == 0) nn[k].a = matrix_add(matrix_multi(x, nn[k].w), nn[k].b);
@@ -191,22 +181,26 @@ int main() {
         if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
         else nn[k].x = hm_softmax(nn[k].a);
     }
-
     cout << " cross entropy ";
     cout << hm_cross_entropy(nn[depth-1].x, t) << endl;
     cout << "accuracy rate ";
     cout << calc_accuracy_rate(nn[depth-1].x, t) << endl;
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 
     // test set-------------------------------------
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
     cout << "test set" << endl;
+    //新しいデータをランダムに作成
     x = make_data(n);
+    //教師ラベルも作成
     t.assign(0, vd(0));
     for (int i=0; i<n/3; ++i) t.push_back({1, 0, 0});//class1
     for (int i=0; i<n/3; ++i) t.push_back({0, 1, 0});//class2
-    for (int i=0; i<=n/3 && t.size()<n; ++i) t.push_back({0, 0, 1});//class3
-
+    for (int i=0; i<=n/3; ++i) t.push_back({0, 0, 1});//class3
+    
+    //test set は単に順伝播させて，正解率を見るだけだからシャッフルは必要ない
 
     //forward propagation
     for (int k=0; k<depth; ++k) {
@@ -215,23 +209,28 @@ int main() {
         if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
         else nn[k].x = hm_softmax(nn[k].a);
     }
-
     cout << " cross entropy ";
     cout << hm_cross_entropy(nn[depth-1].x, t) << endl;
     cout << "accuracy rate ";
     cout << calc_accuracy_rate(nn[depth-1].x, t) << endl;
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 
-    cout << "=========================================" << endl;
+    //最後のパラメータの表示
     cout << "last parameters" << endl;
-    cout << "w" << endl;
-    for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
-    cout << "b" << endl;
-    for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
-    cout << "=========================================" << endl;
-
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    for (int i=0; i<depth; ++i) {
+        cout << "w " << i+1 << endl; 
+        matrix_show(nn[i].w);
+    }
+    for (int i=0; i<depth; ++i) {
+        cout << "b " << i+1 << endl;
+        matrix_show_b(nn[i].b);
+    }
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 }
-
 
 //  #######  ##   ##  ##   ##    ####   ######    ####     #####   ##   ##
 //   ##   #  ##   ##  ###  ##   ##  ##  # ## #     ##     ##   ##  ###  ##
