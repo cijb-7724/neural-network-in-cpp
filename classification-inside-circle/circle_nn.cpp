@@ -9,8 +9,7 @@
 #include <vector>
 #include <algorithm>
 #include <random>
-#include <fstream>//
-#include <sstream>//iranaikamo
+
 
 using namespace std;
 using vd = vector<double>;
@@ -79,9 +78,9 @@ int main() {
     // int learning_plan = 2000;
     // int loop = 9500;
     // int batch_size = 100;
-    int show_interval = 10;
+    int show_interval = 1000;
     int learning_plan = 2000;
-    int loop = 4;
+    int loop = 4000;
     int batch_size = 10;
     // vector<int> nn_form = {2, 3, 3, 2};
     vector<int> nn_form = {2, 10, 10, 10, 2};

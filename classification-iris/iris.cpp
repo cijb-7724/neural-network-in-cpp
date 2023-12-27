@@ -59,35 +59,35 @@ mt19937 engine(SEED);
 uniform_real_distribution<> distCircle(-6, 6);
 
 
-void outputfile(vvd &x) {
-    int n = x.size(), m = x[0].size();
-    string fname1 = "in.txt";
-    string fname2 = "out.txt";
-    ofstream outputFile (fname1);
-    ofstream outputFile2 (fname2);
+// void outputfile(vvd &x) {
+//     int n = x.size(), m = x[0].size();
+//     string fname1 = "in.txt";
+//     string fname2 = "out.txt";
+//     ofstream outputFile (fname1);
+//     ofstream outputFile2 (fname2);
     
 
-    for (int i=0; i<n; ++i) {
-        for (int j=0; j<m; ++j) {
-            if (i < n/2) {
-                outputFile << x[i][j];
-                if (j != m-1) outputFile << " ";
-            } else {
-                outputFile2 << x[i][j];
-                if (j != m-1) outputFile2 << " ";
-            }
+//     for (int i=0; i<n; ++i) {
+//         for (int j=0; j<m; ++j) {
+//             if (i < n/2) {
+//                 outputFile << x[i][j];
+//                 if (j != m-1) outputFile << " ";
+//             } else {
+//                 outputFile2 << x[i][j];
+//                 if (j != m-1) outputFile2 << " ";
+//             }
             
-        }
-        if (i < n/2) {
-            outputFile << endl;
-        } else {
-            outputFile2 << endl;
-        }
+//         }
+//         if (i < n/2) {
+//             outputFile << endl;
+//         } else {
+//             outputFile2 << endl;
+//         }
         
-    } 
-}
-void outputTextFile2d(vvd &v, string s) {  
-}
+//     } 
+// }
+// void outputTextFile2d(vvd &v, string s) {  
+// }
 
 
 vvd readCSV(string filename) {
@@ -130,18 +130,31 @@ test 45:15, 15, 15
 50, 50, 50
 */
 
+vvd normalization(const vvd & data) {
+    int n = data.size();
+    int m = data[0].size();
+    vvd ret(n, vd(m));
+    for (int j=0; j<m; ++j) {
+        vd tmp;
+        for (int i=0; i<n; ++i) {
+            // cout << data[j][i] << ' ';
+            tmp.push_back(data[i][j]);
+        }
+        double mn = *min_element(tmp.begin(), tmp.end());
+        double mx = *max_element(tmp.begin(), tmp.end());
+        for (int i=0; i<n; ++i) {
+            ret[i][j] = (tmp[i] - mn) / (mx - mn);
+        }
+    }
+    return ret;
+}
+
 int main() {
     //data import
     ////////////////////////////////////////////////////////////////
     vvd data = readCSV("data/iris_datasets_data.csv");
-    // for (const auto& row : data) {
-    //     for (const auto& cell : row) {
-    //         cout << cell << " ";
-    //     }
-    //     cout << endl;
-    // }
+    // data = normalization(data);
     cout << data.size() << ' ' << data[0].size() << endl;
-    
     vvd target_tmp = readCSV("data/iris_datasets_target.csv");
     vvd target;
     for (int i=0; i<target_tmp[0].size(); ++i) {
@@ -150,21 +163,15 @@ int main() {
         else if (target_tmp[0][i] == 2) target.push_back({0, 0, 1});
     }
 
-    // for (const auto& row : target) {
-    //     for (const auto& cell : row) {
-    //         cout << cell << " ";
-    //     }
-    //     cout << endl;
-    // }
     cout << target.size() << ' ' << target[0].size() << endl;
     ////////////////////////////////////////////////////////////////
     int train_size = 105, test_size = 45;
     int all_size = train_size + test_size;
     vvd train_x, train_t, test_x, test_t;
     // return 0;
-    vector<int> id;
-    id.assign(all_size/3, 0);
+    vector<int> id(all_size/3);
     for (int i=0; i<all_size/3; ++i) id[i] = i;
+    
 
     for (int i=0; i<3; ++i) {
         vvd tmpX, tmpT;
@@ -175,6 +182,7 @@ int main() {
         shuffle(id.begin(), id.end(), engine);
         shuffle_VVD(tmpX, id);
         shuffle_VVD(tmpT, id);
+        
         for (int j=0; j<all_size/3; ++j) {
             if (j < train_size/3) {
                 train_x.push_back(tmpX[j]);
@@ -185,15 +193,31 @@ int main() {
             }
         }
     }
+    /*
+    このタイミングでは各クラス内ではシャッフルされているが，
+    クラスは昇順に並んでいる．
+    learnの中，各ステップでシャッフルする．
+    */
+    /*
+    cout << "train_x" << endl;
     cout << train_x.size() << ' ' << train_x[0].size() << endl;
+    matrix_show(train_x);
+    cout << "train_t" << endl;
     cout << train_t.size() << ' ' << train_t[0].size() << endl;
+    matrix_show(train_t);
+
+    cout << "test_x" << endl;
     cout << test_x.size() << ' ' << test_x[0].size() << endl;
+    matrix_show(test_x);
+    cout << "test_t" << endl;
     cout << test_t.size() << ' ' << test_t[0].size() << endl;
+    matrix_show(test_t);
+    */
     
     double eta = 0.1, attenuation = 0.7;
     int n = 150;
     int show_interval = 100;
-    int learning_plan = 100;
+    int learning_plan = 10;
     int loop = 4;
     int batch_size = 5;
     vector<int> nn_form = {4, 10, 3};
