@@ -201,9 +201,8 @@ int main() {
     int show_interval = 1000;
     int learning_plan = 50;
     int loop = 400;
-    int batch_size = 15; //<train_size
+    int batch_size = 10; //<train_size
     vector<int> nn_form = {4, 10, 3};
-    // vector<int> nn_form = {4, 20, 3};
     int depth = nn_form.size()-1;
 
     vector<layer_t> nn(depth);
@@ -366,24 +365,24 @@ int main() {
     cout << calc_accuracy_rate(nn[depth-1].x, test_t) << endl;
     for (int i=0; i<40; ++i) cout << "=";
     cout << endl;
-    // matrix_show(test_x);
-    // matrix_show(test_t);
+    matrix_show(test_x);
+    matrix_show(test_t);
     matrix_show(nn[depth-1].x);
 
     //最後のパラメータの表示
-    // cout << "last parameters" << endl;
-    // for (int i=0; i<40; ++i) cout << "=";
-    // cout << endl;
-    // for (int i=0; i<depth; ++i) {
-    //     cout << "w " << i+1 << endl; 
-    //     matrix_show(nn[i].w);
-    // }
-    // for (int i=0; i<depth; ++i) {
-    //     cout << "b " << i+1 << endl;
-    //     matrix_show_b(nn[i].b);
-    // }
-    // for (int i=0; i<40; ++i) cout << "=";
-    // cout << endl;
+    cout << "last parameters" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    for (int i=0; i<depth; ++i) {
+        cout << "w " << i+1 << endl; 
+        matrix_show(nn[i].w);
+    }
+    for (int i=0; i<depth; ++i) {
+        cout << "b " << i+1 << endl;
+        matrix_show_b(nn[i].b);
+    }
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 }
 
 
