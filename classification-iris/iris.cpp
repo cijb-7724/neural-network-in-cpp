@@ -12,6 +12,7 @@ iris datasets
 using namespace std;
 using vd = vector<double>;
 using vvd = vector<vector<double>>;
+using vvvd = vector<vector<vector<double>>>;
 
 //function
 bool judge_term(double x, double y);
@@ -19,11 +20,13 @@ vvd make_data(int n);
 void make_initial_value(vvd &table, double mu, double sig);
 double calc_accuracy_rate(vvd &y, vvd &t);
 void shuffle_VVD(vvd &v, vector<int> &id);
+vvd readCSV(string filename);
 //MATRIX
 void matrix_show(vvd &a);
 void matrix_show_b(vvd &a);
 vvd matrix_multi(const vvd &a, const vvd &b);
 vvd matrix_adm_multi(const vvd &a, const vvd &b);
+vvd matrix_adm_multi_tensor(const vvd &a, const vvvd &b);
 vvd matrix_add(const vvd &a, const vvd &b);
 vvd matrix_t(const vvd &a);
 //ACTIVATION
@@ -37,7 +40,7 @@ double hm_cross_entropy(vvd &y, vvd &t);
 //BACK PROPAGATION
 vvd expansion_bias(vvd &b, int batch);
 vvd calc_r_cross_entropy(vvd &x, vvd &t);
-vvd calc_r_softmax (vvd &x);
+vvvd calc_r_softmax(vvd &x);
 vvd calc_r_ReLU (vvd &a);
 vvd calc_r_bias (vvd &b, vvd &delta);
 void updateWeights(vvd &w, vvd &rw, double eta);
@@ -90,28 +93,6 @@ uniform_real_distribution<> distCircle(-6, 6);
 // }
 
 
-vvd readCSV(string filename) {
-    ifstream file(filename);
-    vvd data;
-    if (!file.is_open()) {
-        cerr << "Error Opening File!" << endl;
-        return data;
-    }
-
-    string line;
-    while (getline(file, line)) {
-        vd row;
-        stringstream ss(line);
-        string cell;
-        while (getline(ss, cell, ',')) {
-            row.push_back(stod(cell));
-        }
-        data.push_back(row);
-    }
-    file.close();
-    return data;
-}
-
 //  ##   ##    ##      ####    ##   ##
 //  ### ###   ####      ##     ###  ##
 //  #######  ##  ##     ##     #### ##
@@ -119,6 +100,7 @@ vvd readCSV(string filename) {
 //  ## # ##  ######     ##     ##  ###
 //  ##   ##  ##  ##     ##     ##   ##
 //  ##   ##  ##  ##    ####    ##   ##
+
 /*
 all 150
 train 105:35, 35, 35
@@ -153,7 +135,6 @@ int main() {
     //data import
     ////////////////////////////////////////////////////////////////
     vvd data = readCSV("data/iris_datasets_data.csv");
-    // data = normalization(data);
     cout << data.size() << ' ' << data[0].size() << endl;
     vvd target_tmp = readCSV("data/iris_datasets_target.csv");
     vvd target;
@@ -162,17 +143,19 @@ int main() {
         else if (target_tmp[0][i] == 1) target.push_back({0, 1, 0});
         else if (target_tmp[0][i] == 2) target.push_back({0, 0, 1});
     }
-
     cout << target.size() << ' ' << target[0].size() << endl;
     ////////////////////////////////////////////////////////////////
+
+    // data = normalization(data);
+
     int train_size = 105, test_size = 45;
     int all_size = train_size + test_size;
     vvd train_x, train_t, test_x, test_t;
-    // return 0;
+    
     vector<int> id(all_size/3);
     for (int i=0; i<all_size/3; ++i) id[i] = i;
-    
 
+    //data分布を保持しつつ，ランダムにtrain setとtest setに分類する
     for (int i=0; i<3; ++i) {
         vvd tmpX, tmpT;
         for (int j=0; j<all_size/3; ++j) {
@@ -182,7 +165,6 @@ int main() {
         shuffle(id.begin(), id.end(), engine);
         shuffle_VVD(tmpX, id);
         shuffle_VVD(tmpT, id);
-        
         for (int j=0; j<all_size/3; ++j) {
             if (j < train_size/3) {
                 train_x.push_back(tmpX[j]);
@@ -198,7 +180,7 @@ int main() {
     クラスは昇順に並んでいる．
     learnの中，各ステップでシャッフルする．
     */
-    /*
+    
     cout << "train_x" << endl;
     cout << train_x.size() << ' ' << train_x[0].size() << endl;
     matrix_show(train_x);
@@ -212,7 +194,7 @@ int main() {
     cout << "test_t" << endl;
     cout << test_t.size() << ' ' << test_t[0].size() << endl;
     matrix_show(test_t);
-    */
+    
     
     double eta = 0.1, attenuation = 0.7;
     int n = 150;
@@ -238,14 +220,20 @@ int main() {
         nn[i].b = expansion_bias(nn[i].b, batch_size);
     }
     
-    //初期のパラメータ
-    cout << "=========================================" << endl;
+    //初期のパラメータの表示
     cout << "first parameters" << endl;
-    cout << "w" << endl;
-    for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
-    cout << "b" << endl;
-    for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    for (int i=0; i<depth; ++i) {
+        cout << "w " << i+1 << endl; 
+        matrix_show(nn[i].w);
+    }
+    for (int i=0; i<depth; ++i) {
+        cout << "b " << i+1 << endl;
+        matrix_show_b(nn[i].b);
+    }
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
     
     //learn
     for (int i=0; i<loop; ++i) {
@@ -271,13 +259,14 @@ int main() {
         // cout << t0.size() << endl;
         // matrix_show(x0);
         // matrix_show(t0);
-        cout << "=========================================" << endl;
-        cout << "i = " << i << " before forward propagation parameters" << endl;
-        cout << "w" << endl;
-        for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
-        cout << "b" << endl;
-        for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
-        cout << "=========================================" << endl;
+
+        // cout << "=========================================" << endl;
+        // cout << "i = " << i << " before forward propagation parameters" << endl;
+        // cout << "w" << endl;
+        // for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
+        // cout << "b" << endl;
+        // for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
+        // cout << "=========================================" << endl;
         
 
         //forward propagation
@@ -287,26 +276,25 @@ int main() {
             if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
             else nn[k].x = hm_softmax(nn[k].a);
 
-            cout << "i = " << i << ", in forward propagation x " << k << endl;
-            matrix_show(nn[k].x);
+            // cout << "i = " << i << ", in forward propagation x " << k << endl;
+            // matrix_show(nn[k].x);
         }
-        cout << "size x" << endl;
-        cout << nn[depth-1].x.size() << ' ' << nn[depth-1].x[0].size() << endl;
-        matrix_show(nn[depth-1].x);
-        cout << "T size " << t0.size() << " " << t0[0].size() << endl;
-        matrix_show(t0);
-        cout << i << " cross entropy ";
-        cout << hm_cross_entropy(nn[depth-1].x, t0) << endl;
+        // cout << "size x" << endl;
+        // cout << nn[depth-1].x.size() << ' ' << nn[depth-1].x[0].size() << endl;
+        // matrix_show(nn[depth-1].x);
+        // cout << "T size " << t0.size() << " " << t0[0].size() << endl;
+        // matrix_show(t0);
+        // cout << i << " cross entropy ";
+        // cout << hm_cross_entropy(nn[depth-1].x, t0) << endl;
 
         //back propagation
         for (int k=depth-1; k>=0; --k) {
             if (k == depth-1) {
-                vvd r_fL_xk, r_hk_ak;
+                vvd r_fL_xk;
+                vvvd r_hk_ak;
                 r_fL_xk = calc_r_cross_entropy(nn[k].x, t0);
-                cout << "corss entropy" << endl;
-                matrix_show(r_fL_xk);
                 r_hk_ak = calc_r_softmax(nn[k].x);
-                nn[k].delta = matrix_adm_multi(r_fL_xk, r_hk_ak);
+                nn[k].delta = matrix_adm_multi_tensor(r_fL_xk, r_hk_ak);
             } else {
                 vvd r_h_a;
                 r_h_a = calc_r_ReLU(nn[k].a);
@@ -318,11 +306,12 @@ int main() {
         }
 
         //update parameters
-        if ((i+1) % learning_plan == 0) eta *= attenuation;
         for (int k=0; k<depth; ++k) {
             updateWeights(nn[k].w, nn[k].rw, eta);
             updateWeights(nn[k].b, nn[k].rb, eta);
         }
+        //学習率の更新
+        if ((i+1) % learning_plan == 0) eta *= attenuation;
 
         //たまに性能の確認
         if (i % show_interval == 0) {
@@ -334,12 +323,12 @@ int main() {
     }
 
     // train set---------------------------------
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
     cout << "train set" << endl;
     for (int i=0; i<depth; ++i) {
         nn[i].b = expansion_bias(nn[i].b, train_size);
     }
-
     //forward propagation
     for (int k=0; k<depth; ++k) {
         if (k == 0) nn[k].a = matrix_add(matrix_multi(train_x, nn[k].w), nn[k].b);
@@ -347,23 +336,22 @@ int main() {
         if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
         else nn[k].x = hm_softmax(nn[k].a);
     }
-
     cout << " cross entropy ";
     cout << hm_cross_entropy(nn[depth-1].x, train_t) << endl;
     cout << "accuracy rate ";
     cout << calc_accuracy_rate(nn[depth-1].x, train_t) << endl;
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 
     // test set-------------------------------------
-    cout << "=========================================" << endl;
-    cout << "test" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    cout << "test set" << endl;
     for (int i=0; i<depth; ++i) {
         nn[i].b = expansion_bias(nn[i].b, test_size);
     }
-    // x = make_data(n);
-    // t.assign(0, vd(0));
-    // for (int i=0; i<n/2; ++i) t.push_back({1, 0});
-    // for (int i=0; i<n/2; ++i) t.push_back({0, 1});
+    
+    //test set は単に順伝播させて，正解率を見るだけだからシャッフルは必要ない
 
     //forward propagation
     for (int k=0; k<depth; ++k) {
@@ -372,20 +360,27 @@ int main() {
         if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
         else nn[k].x = hm_softmax(nn[k].a);
     }
-
     cout << " cross entropy ";
     cout << hm_cross_entropy(nn[depth-1].x, test_t) << endl;
     cout << "accuracy rate ";
     cout << calc_accuracy_rate(nn[depth-1].x, test_t) << endl;
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 
-    cout << "=========================================" << endl;
+    //最後のパラメータの表示
     cout << "last parameters" << endl;
-    cout << "w" << endl;
-    for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
-    cout << "b" << endl;
-    for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
-    cout << "=========================================" << endl;
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    for (int i=0; i<depth; ++i) {
+        cout << "w " << i+1 << endl; 
+        matrix_show(nn[i].w);
+    }
+    for (int i=0; i<depth; ++i) {
+        cout << "b " << i+1 << endl;
+        matrix_show_b(nn[i].b);
+    }
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 }
 
 
@@ -453,6 +448,27 @@ void shuffle_VVD(vvd &v, vector<int> &id) {
         }
     }
     v = tmp;
+}
+vvd readCSV(string filename) {
+    ifstream file(filename);
+    vvd data;
+    if (!file.is_open()) {
+        cerr << "Error Opening File!" << endl;
+        return data;
+    }
+
+    string line;
+    while (getline(file, line)) {
+        vd row;
+        stringstream ss(line);
+        string cell;
+        while (getline(ss, cell, ',')) {
+            row.push_back(stod(cell));
+        }
+        data.push_back(row);
+    }
+    file.close();
+    return data;
 }
 
 
@@ -651,16 +667,21 @@ vvd calc_r_cross_entropy(vvd &x, vvd &t) {
     }
     return tmp;
 }
-
-vvd calc_r_softmax (vvd &x) {
+//rx_k/ra_j
+//m class 分類
+//m次正方行列を返す
+vvvd calc_r_softmax(vvd &x) {
     int n = x.size(), m = x[0].size();
-    vvd tmp(n, vd(m, 0));
+    vvvd ret(n, vvd(m, vd(m, 0)));
     for (int s=0; s<n; ++s) {
-        for (int j=0; j<m; ++j) {
-            tmp[s][j] = x[s][j]*(1-x[s][j]);
+        for (int i=0; i<m; ++i) {
+            for (int j=0; j<m; ++j) {
+                if (i == j) ret[s][i][j] = x[s][i]*(1 - x[s][j]);
+                else ret[s][i][j] = x[s][i]*(0 - x[s][j]);
+            }
         }
     }
-    return tmp;
+    return ret;
 }
 
 vvd calc_r_ReLU (vvd &a) {
