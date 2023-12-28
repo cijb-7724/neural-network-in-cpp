@@ -112,24 +112,24 @@ test 45:15, 15, 15
 50, 50, 50
 */
 
-// vvd normalization(const vvd & data) {
-//     int n = data.size();
-//     int m = data[0].size();
-//     vvd ret(n, vd(m));
-//     for (int j=0; j<m; ++j) {
-//         vd tmp;
-//         for (int i=0; i<n; ++i) {
-//             // cout << data[j][i] << ' ';
-//             tmp.push_back(data[i][j]);
-//         }
-//         double mn = *min_element(tmp.begin(), tmp.end());
-//         double mx = *max_element(tmp.begin(), tmp.end());
-//         for (int i=0; i<n; ++i) {
-//             ret[i][j] = (tmp[i] - mn) / (mx - mn);
-//         }
-//     }
-//     return ret;
-// }
+vvd normalization(const vvd & data) {
+    int n = data.size();
+    int m = data[0].size();
+    vvd ret(n, vd(m));
+    for (int j=0; j<m; ++j) {
+        vd tmp;
+        for (int i=0; i<n; ++i) {
+            // cout << data[j][i] << ' ';
+            tmp.push_back(data[i][j]);
+        }
+        double mn = *min_element(tmp.begin(), tmp.end());
+        double mx = *max_element(tmp.begin(), tmp.end());
+        for (int i=0; i<n; ++i) {
+            ret[i][j] = (tmp[i] - mn) / (mx - mn);
+        }
+    }
+    return ret;
+}
 
 int main() {
     //data import
@@ -196,12 +196,11 @@ int main() {
     // matrix_show(test_t);
     
     
-    double eta = 0.01, attenuation = 0.5;
-    int n = 150;
-    int show_interval = 1000;
-    int learning_plan = 50;
-    int loop = 400;
-    int batch_size = 10; //<train_size
+    double eta = 0.005, attenuation = 0.9;
+    int show_interval = 10;
+    int learning_plan = 10;
+    int loop = 100;
+    int batch_size = 32; //<train_size
     vector<int> nn_form = {4, 10, 3};
     int depth = nn_form.size()-1;
 
@@ -365,24 +364,24 @@ int main() {
     cout << calc_accuracy_rate(nn[depth-1].x, test_t) << endl;
     for (int i=0; i<40; ++i) cout << "=";
     cout << endl;
-    matrix_show(test_x);
-    matrix_show(test_t);
-    matrix_show(nn[depth-1].x);
+    // matrix_show(test_x);
+    // matrix_show(test_t);
+    // matrix_show(nn[depth-1].x);
 
     //最後のパラメータの表示
-    cout << "last parameters" << endl;
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
-    for (int i=0; i<depth; ++i) {
-        cout << "w " << i+1 << endl; 
-        matrix_show(nn[i].w);
-    }
-    for (int i=0; i<depth; ++i) {
-        cout << "b " << i+1 << endl;
-        matrix_show_b(nn[i].b);
-    }
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
+    // cout << "last parameters" << endl;
+    // for (int i=0; i<40; ++i) cout << "=";
+    // cout << endl;
+    // for (int i=0; i<depth; ++i) {
+    //     cout << "w " << i+1 << endl; 
+    //     matrix_show(nn[i].w);
+    // }
+    // for (int i=0; i<depth; ++i) {
+    //     cout << "b " << i+1 << endl;
+    //     matrix_show_b(nn[i].b);
+    // }
+    // for (int i=0; i<40; ++i) cout << "=";
+    // cout << endl;
 }
 
 
