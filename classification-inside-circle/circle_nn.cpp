@@ -9,11 +9,23 @@
 #include <vector>
 #include <algorithm>
 #include <random>
+#include <fstream>
+#include <sstream>
 
 using namespace std;
 using vd = vector<double>;
 using vvd = vector<vector<double>>;
 using vvvd = vector<vector<vector<double>>>;
+
+typedef struct {
+    vvd w;
+    vvd b;
+    vvd a;
+    vvd x;
+    vvd delta;
+    vvd rw;
+    vvd rb;
+} layer_t;
 
 //function
 bool judge_term(double x, double y);
@@ -21,6 +33,8 @@ vvd make_data(int n);
 void make_initial_value(vvd &table, double mu, double sig);
 double calc_accuracy_rate(vvd &y, vvd &t);
 void shuffle_VVD(vvd &v, vector<int> &id);
+void outputfile(const vvd &output);
+void drawing_by_python(vector<layer_t> &nn, int depth);
 //MATRIX
 void matrix_show(vvd &a);
 void matrix_show_b(vvd &a);
@@ -45,16 +59,6 @@ vvd calc_r_ReLU (vvd &a);
 vvd calc_r_bias (vvd &b, vvd &delta);
 void updateWeights(vvd &w, vvd &rw, double eta);
 
-typedef struct {
-    vvd w;
-    vvd b;
-    vvd a;
-    vvd x;
-    vvd delta;
-    vvd rw;
-    vvd rb;
-} layer_t;
-
 random_device rd;
 long long SEED = 0;//実行毎に同じ乱数生成
 // long long SEED = rd();//実行毎に異なる乱数生成
@@ -75,7 +79,7 @@ int main() {
     int n = 1000;
     int show_interval = 1000;
     int learning_plan = 2000;
-    int loop = 9500;
+    int loop = 950;//9500
     int batch_size = 100;
     vector<int> nn_form = {2, 3, 3, 2};
     int depth = nn_form.size()-1;
@@ -237,6 +241,9 @@ int main() {
     }
     for (int i=0; i<40; ++i) cout << "=";
     cout << endl;
+
+    //一旦csvに出力したのちpythonで描画してみる
+    drawing_by_python(nn, depth);
 }
 
 //  #######  ##   ##  ##   ##    ####   ######    ####     #####   ##   ##
@@ -308,6 +315,50 @@ void shuffle_VVD(vvd &v, vector<int> &id) {
     }
     v = tmp;
 }
+
+//x, y, tを列挙
+void outputfile(const vvd &output) {
+    int n = output.size(), m = output[0].size();
+    string fname = "circle_.csv";
+    ofstream outputFile (fname);
+
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            outputFile << output[i][j];
+            if (j != m-1) outputFile << ", ";
+        }
+        outputFile << endl;
+    } 
+}
+void drawing_by_python(vector<layer_t> &nn, int depth) {
+    vvd data;
+    for (int i=0; i<depth; ++i) {
+        nn[i].b = expansion_bias(nn[i].b, 1);
+    }
+    cout << "after expansion bias" << endl;
+    for (double x=-6; x<=6; x+=0.1) {
+        for (double y=-6; y<=6; y+=0.1) {
+            vvd tmp = {{x, y}};
+            //forward propagation
+            for (int k=0; k<depth; ++k) {
+                if (k == 0) nn[k].a = matrix_add(matrix_multi(tmp, nn[k].w), nn[k].b);
+                else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
+                if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+                else nn[k].x = hm_softmax(nn[k].a);
+            }
+            if (nn[depth-1].x[0][0] > nn[depth-1].x[0][1]) {
+                //inside
+                tmp[0].push_back(1);
+            } else {
+                //outside
+                tmp[0].push_back(0);
+            }
+            data.push_back(tmp[0]);
+        }
+    }
+    outputfile(data);
+}
+
 
 //  ##   ##    ##     ######   ######    ####    ##  ##
 //  ### ###   ####    # ## #    ##  ##    ##     ##  ##
@@ -436,7 +487,7 @@ double gaussianDistribution (double mu, double sig) {
 double h_sigmoid(double x) {
     return 1/(1+exp(-x));
 }
-double h_tash(double x) {
+double h_tanh(double x) {
     return (exp(x)-exp(-x)) / (exp(x)+exp(-x));
 }
 double h_ReLU(double x) {
@@ -449,6 +500,16 @@ vvd hm_ReLU(vvd &x) {
     for (int i=0; i<n; ++i) {
         for (int j=0; j<m; ++j) {
             tmp[i][j] = h_ReLU(x[i][j]);
+        }
+    }
+    return tmp;
+}
+vvd hm_tanh(vvd &x) {
+    int n = x.size(), m = x[0].size();
+    vvd tmp(n, vd(m));
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            tmp[i][j] = h_tanh(x[i][j]);
         }
     }
     return tmp;
