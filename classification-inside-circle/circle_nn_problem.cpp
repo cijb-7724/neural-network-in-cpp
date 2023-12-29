@@ -58,7 +58,7 @@ vvd calc_r_cross_entropy(vvd &x, vvd &t);
 vvvd calc_r_softmax(vvd &x);
 vvd calc_r_ReLU (vvd &a);
 vvd calc_r_tanh(vvd &a);
-vvd calc_r_bias (vvd &b, vvd &delta);
+vvd calc_r_bias (vvd &delta);
 void updateWeights(vvd &w, vvd &rw, double eta);
 
 random_device rd;
@@ -217,8 +217,8 @@ int main() {
 //  ####      #####   ##   ##    ####    ####     ####     #####   ##   ##
 
 bool judge_term(double x, double y){ return (x*x + y*y < 9) ? true : false;}
-// bool judge_term(double x, double y) { return (x * y > 0 ? true : false);}//xor
-// bool judge_term(double x, double y) { return (x*y < 0 && x < 0) ? true : false;}//linear
+// bool judge_term(double x, double y) { return (x * y > 0) ? true : false;}//xor
+// bool judge_term(double x, double y) { return (y > -x) ? true : false;}//linear
 //条件を満たす点と満たさない点をn/2個ずつ作る
 vvd make_data(int n) {
     vvd x;
@@ -534,7 +534,7 @@ vvd calc_r_tanh(vvd &a) {
     //ここに書く 無視
 }
 
-vvd calc_r_bias (vvd &b, vvd &delta) {
+vvd calc_r_bias (vvd &delta) {
     //ここに書く
 }
 

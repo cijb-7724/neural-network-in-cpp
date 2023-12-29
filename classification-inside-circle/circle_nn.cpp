@@ -58,7 +58,7 @@ vvd calc_r_cross_entropy(vvd &x, vvd &t);
 vvvd calc_r_softmax(vvd &x);
 vvd calc_r_ReLU (vvd &a);
 vvd calc_r_tanh(vvd &a);
-vvd calc_r_bias (vvd &b, vvd &delta);
+vvd calc_r_bias (vvd &delta);
 void updateWeights(vvd &w, vvd &rw, double eta);
 
 random_device rd;
@@ -161,7 +161,7 @@ int main() {
                 r_h_a = calc_r_tanh(nn[k].a);
                 nn[k].delta = matrix_adm_multi(r_h_a, matrix_multi(nn[k+1].delta, matrix_t(nn[k+1].w)));
             }
-            nn[k].rb = calc_r_bias(nn[k].b, nn[k].delta);
+            nn[k].rb = calc_r_bias(nn[k].delta);
             if (k != 0) nn[k].rw = matrix_multi(matrix_t(nn[k-1].x), nn[k].delta);
             else nn[k].rw = matrix_multi(matrix_t(x0), nn[k].delta);
         }
@@ -262,7 +262,7 @@ int main() {
 
 bool judge_term(double x, double y){ return (x*x + y*y < 9) ? true : false;}
 // bool judge_term(double x, double y) { return (x * y > 0 ? true : false);}//xor
-// bool judge_term(double x, double y) { return (x*y < 0 && x < 0) ? true : false;}//linear
+// bool judge_term(double x, double y) { return (y > -x) ? true : false;}//linear
 //条件を満たす点と満たさない点をn/2個ずつ作る
 vvd make_data(int n) {
     vvd x;
@@ -341,8 +341,8 @@ void drawing_by_python(vector<layer_t> &nn, int depth) {
     for (int i=0; i<depth; ++i) {
         nn[i].b = expansion_bias(nn[i].b, 1);
     }
-    for (double x=-6; x<=6; x+=1) {
-        for (double y=-6; y<=6; y+=1) {
+    for (double x=-6; x<=6; x+=0.05) {
+        for (double y=-6; y<=6; y+=0.05) {
             vvd tmp = {{x, y}};
             //forward propagation
             for (int k=0; k<depth; ++k) {
@@ -627,8 +627,8 @@ vvd calc_r_tanh(vvd &a) {
     return tmp;
 }
 
-vvd calc_r_bias (vvd &b, vvd &delta) {
-    int n = b.size(), m = b[0].size();
+vvd calc_r_bias (vvd &delta) {
+    int n = delta.size(), m = delta[0].size();
     vvd rb;
     if (n != delta.size() || m != delta[0].size()) cout << "size is not match" << endl;
     rb.assign(1, vd(m, 0));
