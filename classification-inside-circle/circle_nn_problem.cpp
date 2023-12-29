@@ -102,18 +102,7 @@ int main() {
     
     //初期のパラメータの表示
     cout << "first parameters" << endl;
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
-    for (int i=0; i<depth; ++i) {
-        cout << "w " << i+1 << endl; 
-        matrix_show(nn[i].w);
-    }
-    for (int i=0; i<depth; ++i) {
-        cout << "b " << i+1 << endl;
-        matrix_show_b(nn[i].b);
-    }
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
+    show_parameters(nn, depth);
     
     //訓練セットの作成
     //前半半分は円の内側 後半半分は円の外側
@@ -137,33 +126,12 @@ int main() {
 
         //forward propagation
         for (int k=0; k<depth; ++k) {
-            if (k == 0) nn[k].a = matrix_add(matrix_multi(x0, nn[k].w), nn[k].b);
-            else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
-            // if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
-            if (k < depth-1) nn[k].x = hm_tanh(nn[k].a);
-            else nn[k].x = hm_softmax(nn[k].a);
-
-            // cout << "i = " << i << ", in forward propagation x " << k << endl;
-            // matrix_show(nn[k].x);
+            ;
         }
-        
+
         //back propagation
         for (int k=depth-1; k>=0; --k) {
-            if (k == depth-1) {
-                vvd r_fL_xk;
-                vvvd r_hk_ak;
-                r_fL_xk = calc_r_cross_entropy(nn[k].x, t0);
-                r_hk_ak = calc_r_softmax(nn[k].x);
-                nn[k].delta = matrix_adm_multi_tensor(r_fL_xk, r_hk_ak);
-            } else {
-                vvd r_h_a;
-                // r_h_a = calc_r_ReLU(nn[k].a);
-                r_h_a = calc_r_tanh(nn[k].a);
-                nn[k].delta = matrix_adm_multi(r_h_a, matrix_multi(nn[k+1].delta, matrix_t(nn[k+1].w)));
-            }
-            nn[k].rb = calc_r_bias(nn[k].b, nn[k].delta);
-            if (k != 0) nn[k].rw = matrix_multi(matrix_t(nn[k-1].x), nn[k].delta);
-            else nn[k].rw = matrix_multi(matrix_t(x0), nn[k].delta);
+            ;
         }
 
         //update parameters
@@ -171,6 +139,7 @@ int main() {
             updateWeights(nn[k].w, nn[k].rw, eta);
             updateWeights(nn[k].b, nn[k].rb, eta);
         }
+        
         //学習率の更新
         if ((i+1) % learning_plan == 0) eta *= attenuation;
 
@@ -235,21 +204,10 @@ int main() {
 
     //最後のパラメータの表示
     cout << "last parameters" << endl;
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
-    for (int i=0; i<depth; ++i) {
-        cout << "w " << i+1 << endl; 
-        matrix_show(nn[i].w);
-    }
-    for (int i=0; i<depth; ++i) {
-        cout << "b " << i+1 << endl;
-        matrix_show_b(nn[i].b);
-    }
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
+    show_parameters(nn, depth);
 
     //一旦csvに出力したのちpythonで描画してみる
-    drawing_by_python(nn, depth);
+    // drawing_by_python(nn, depth);
 }
 
 //  #######  ##   ##  ##   ##    ####   ######    ####     #####   ##   ##
@@ -320,6 +278,21 @@ void shuffle_VVD(vvd &v, vector<int> &id) {
         }
     }
     v = tmp;
+}
+
+void show_parameters(vector<layer_t> &nn, int depth) {
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    for (int i=0; i<depth; ++i) {
+        cout << "w " << i+1 << endl; 
+        matrix_show(nn[i].w);
+    }
+    for (int i=0; i<depth; ++i) {
+        cout << "b " << i+1 << endl;
+        matrix_show_b(nn[i].b);
+    }
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
 }
 
 //x, y, tを列挙
