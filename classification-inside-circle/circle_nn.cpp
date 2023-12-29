@@ -341,9 +341,8 @@ void drawing_by_python(vector<layer_t> &nn, int depth) {
     for (int i=0; i<depth; ++i) {
         nn[i].b = expansion_bias(nn[i].b, 1);
     }
-    cout << "after expansion bias" << endl;
-    for (double x=-6; x<=6; x+=0.1) {
-        for (double y=-6; y<=6; y+=0.1) {
+    for (double x=-6; x<=6; x+=1) {
+        for (double y=-6; y<=6; y+=1) {
             vvd tmp = {{x, y}};
             //forward propagation
             for (int k=0; k<depth; ++k) {
