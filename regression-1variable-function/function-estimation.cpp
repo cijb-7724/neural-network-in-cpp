@@ -9,7 +9,7 @@ using vvd = vector<vector<double>>;
 using vvvd = vector<vector<vector<double>>>;
 
 //function
-int judge_term(double x, double y);
+double judge_term(double x);??
 vvd make_data(int n);
 void make_initial_value(vvd &table, double mu, double sig);
 double calc_accuracy_rate(vvd &y, vvd &t);
@@ -70,7 +70,7 @@ int main() {
     int learning_plan = 1000;
     int loop = 5000;
     int batch_size = 100;
-    vector<int> nn_form = {2, 3, 4, 4, 3};
+    vector<int> nn_form = {2, 3, 4, 4, 1};
     int depth = nn_form.size()-1;
 
     vector<layer_t> nn(depth);

@@ -44,6 +44,8 @@ typedef struct {
 //FILE
 vector<passenger_t> readCSV(string filename);
 vector<string> split(const string &s, char delimiter);
+void missing_value(vector<passenger_t> &psg);
+void normalization(vvd &x, vvd &y, vector<passenger_t> &psg);
 //FUNCTION
 bool judge_term(double x, double y);
 vvd make_data(int n);
@@ -108,7 +110,9 @@ int main() {
     }
     cout << "size is ";
     cout << passengers.size() << endl;
-    vvd train, valid;
+    vvd data_x, data_y;
+    missing_value(passengers);
+    normalization(train, valid, passengers);
 
 
     return 0;
@@ -395,7 +399,7 @@ vector<passenger_t> readCSV(string filename) {
         passenger.Cabin = tokens[11];
         passenger.Embarked = tokens[12].empty() ? ' ' : tokens[12][0];
 
-        passengers.push_back(passenger);//欠損値は-1orspace
+        passengers.push_back(passenger);//欠損値は-1 or space
     }
 
     file.close();
@@ -411,50 +415,75 @@ vector<string> split(const string &s, char delimiter) {
     }
     return tokens;
 }
-
+//medianで補完
+//age, fareのみ
 void missing_value(vector<passenger_t> &psg) {
     int n = psg.size();
-    vector<int> 
+    vector<int> age;
+    for (int i=0; i<n; ++i) {
+        if (psg[i].Age != -1) age.push_back(psg[i].Age);
+    }
+    sort(age.begin(), age.end());
+    for (int i=0; i<n; ++i) {
+        if (psg[i].Age == -1) psg[i].Age = age[age.size()/2];
+    }
+    vd fare;
+    for (int i=0; i<n; ++i) {
+        if (psg[i].Fare != -1) fare.push_back(psg[i].Fare);
+    }
+    sort(fare.begin(), fare.end());
+    for (int i=0; i<n; ++i) {
+        if (psg[i].Fare == -1) psg[i].Fare = fare[fare.size()/2];
+    }
 }
 
-void normalization(vvd &train, vvd &valid, vector<passenger_t> &psg) {
-    train.assign(0, vd(0, 0));
-    valid.assign(0, vd(0, 0));
+void normalization(vvd &x, vvd &y, vector<passenger_t> &psg) {
+    x.assign(0, vd(0));
+    y.assign(0, vd(0));
     int n = psg.size();
+    //正規化と特徴量エンジニアリング
+    /*
+    Pclass:金持ち権力出ちゃうかも　いる！
+    Name:名前は確認しないだろう　いらない！
+    Sex:これはありそう　いる！
+    Age:丈夫な体の人は寒くても生き残るだろう　いる！
+    SibSp:とっさにそこを考慮して優先してボートに乗せるか？　いらない！
+    Parch:とっさにそこを考慮して優先してボートに乗せるか？　いらない！
+    Ticket:チケットも確認されないだろう　いらない！
+    Fare:金持ち権力出ちゃうかも　いる！
+    Cabin:部屋も金持ちと相関あるだろうけど，欠損値が多すぎるから捨てる　いらない！
+    Embarked:港も今回は無視　いらない！
+    Pclass, Sex, Age, Fare
+    */
+    vd vec_Pclass, vec_Sex, vec_Age, vec_Fare;
+    for (int i=0; i<n; ++i) {
+        vec_Pclass.push_back(psg[i].Pclass);
+        if (psg[i].Sex == "male") vec_Sex.push_back(0);
+        else vec_Sex.push_back(1);
+        vec_Age.push_back(psg[i].Age);
+        vec_Fare.push_back(psg[i].Fare);
+    }
+    double mx_Pclass, mn_Pclass, mx_Age, mn_Age, mx_Fare, mn_Fare;
+    mx_Pclass = *max_element(vec_Pclass.begin(), vec_Pclass.end());
+    mn_Pclass = *min_element(vec_Pclass.begin(), vec_Pclass.end());
+    mx_Age = *max_element(vec_Age.begin(), vec_Age.end());
+    mn_Age = *min_element(vec_Age.begin(), vec_Age.end());
+    mx_Fare = *max_element(vec_Fare.begin(), vec_Fare.end());
+    mn_Fare = *min_element(vec_Fare.begin(), vec_Fare.end());
+
+    for (int i=0; i<n; ++i) {
+        vec_Pclass[i] = (vec_Pclass[i] - mn_Pclass) / (mx_Pclass - mn_Pclass);
+        vec_Age[i] = (vec_Age[i] - mn_Age) / (mx_Age - mn_Age);
+        vec_Fare[i] = (vec_Fare[i] - mn_Fare) / (mx_Fare - mn_Fare);
+    }
 
     for (int i=0; i<n; ++i) {
         //教師ラベル
-        if (psg[i].Survived == 1) valid.push_back({1, 0});
-        else train.push_back({0, 1});
-
-        //正規化と特徴量エンジニアリング
-        /*
-        Pclass:金持ち権力出ちゃうかも　いる！
-        Name:名前は確認しないだろう　いらない！
-        Sex:これはありそう　いる！
-        Age:丈夫な体の人は寒くても生き残るだろう　いる！
-        SibSp:とっさにそこを考慮して優先してボートに乗せるか？　いらない！
-        Parch:とっさにそこを考慮して優先してボートに乗せるか？　いらない！
-        Ticket:チケットも確認されないだろう　いらない！
-        Fare:金持ち権力出ちゃうかも　いる！
-        Cabin:部屋も金持ちと相関あるだろうけど，欠損値が多すぎるから捨てる　いらない！
-        Embarked:港も今回は無視　いらない！
-        */
+        if (psg[i].Survived == 1) y.push_back({1, 0});
+        else y.push_back({0, 1});
+        //訓練インスタンス
+        x.push_back({vec_Pclass[i], vec_Sex[i], vec_Age[i], vec_Fare[i]});
     }
-    vvd ret(n, vd(m));
-    for (int j=0; j<m; ++j) {
-        vd tmp;
-        for (int i=0; i<n; ++i) {
-            // cout << data[j][i] << ' ';
-            tmp.push_back(data[i][j]);
-        }
-        double mn = *min_element(tmp.begin(), tmp.end());
-        double mx = *max_element(tmp.begin(), tmp.end());
-        for (int i=0; i<n; ++i) {
-            ret[i][j] = (tmp[i] - mn) / (mx - mn);
-        }
-    }
-    return ret;
 }
 
 
