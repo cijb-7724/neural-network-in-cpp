@@ -790,14 +790,12 @@ vvd calc_r_cross_entropy(vvd &x, vvd &t) {
                 if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
                 else tmp[s][j] += t[s][k] / (x[s][k]);
             }
-            // tmp[s][j] /= n;
+            tmp[s][j] /= n;
         }
     }
     return tmp;
 }
-//rx_k/ra_j
-//m class 分類
-//m次正方行列を返す
+
 vvvd calc_r_softmax(vvd &x) {
     int n = x.size(), m = x[0].size();
     vvvd ret(n, vvd(m, vd(m, 0)));
