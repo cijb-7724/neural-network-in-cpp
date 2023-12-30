@@ -8,7 +8,6 @@ kaggle titanic
 #include <random>
 #include <fstream>
 #include <sstream>
-#include <iomanip> // setprecisionを使用するため
 
 using namespace std;
 using vd = vector<double>;
@@ -45,7 +44,7 @@ typedef struct {
 vector<passenger_t> readCSV(string filename);
 vector<string> split(const string &s, char delimiter);
 void missing_value(vector<passenger_t> &psg);
-void normalization(vvd &x, vvd &y, vector<passenger_t> &psg);
+void normalization(vvd &x, vvd &t, vector<passenger_t> &psg);
 //FUNCTION
 bool judge_term(double x, double y);
 vvd make_data(int n);
@@ -63,9 +62,10 @@ vvd matrix_t(const vvd &a);
 //ACTIVATION
 double gaussianDistribution (double mu, double sig);
 double h_sigmoid(double x);
-double h_tash(double x);
+double h_tanh(double x);
 double h_ReLU(double x);
 vvd hm_ReLU(vvd &x);
+vvd hm_tanh(vvd &x);
 vvd hm_softmax(vvd &x);
 double hm_cross_entropy(vvd &y, vvd &t);
 //BACK PROPAGATION
@@ -73,6 +73,7 @@ vvd expansion_bias(vvd &b, int batch);
 vvd calc_r_cross_entropy(vvd &x, vvd &t);
 vvvd calc_r_softmax(vvd &x);
 vvd calc_r_ReLU (vvd &a);
+vvd calc_r_tanh(vvd &a);
 vvd calc_r_bias (vvd &b, vvd &delta);
 void updateWeights(vvd &w, vvd &rw, double eta);
 
@@ -93,107 +94,99 @@ uniform_real_distribution<> distCircle(-6, 6);
 /*
 
 */
+vector<passenger_t> readCSV_test(string filename);
+void normalization_test(vvd &x, vector<passenger_t> &psg);
 
+void test_output(vector<layer_t> &nn, int depth) {
+    string filename = "data/test.csv";
+    vector<passenger_t> passengers = readCSV_test(filename);
+    cout << "after read csv" << endl;
+    vvd test_x;
+    missing_value(passengers);
+    normalization_test(test_x, passengers);
+    int test_size = test_x.size();
+
+    // valid set-------------------------------------
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    cout << "test set" << endl;
+    for (int i=0; i<depth; ++i) {
+        nn[i].b = expansion_bias(nn[i].b, test_size);
+    }
+
+    //forward propagation
+    for (int k=0; k<depth; ++k) {
+        if (k == 0) nn[k].a = matrix_add(matrix_multi(test_x, nn[k].w), nn[k].b);
+        else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
+        // if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+        if (k < depth-1) nn[k].x = hm_tanh(nn[k].a);
+        else nn[k].x = hm_softmax(nn[k].a);
+    }
+    //nn[depth-1].x
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+
+    // matrix_show(nn[depth-1].x);
+    for (int i=0; i<5; ++i) {
+        cout << passengers[i].PassengerId << "," << nn[depth-1].x[i][0] << ' ' << nn[depth-1].x[i][1] << endl;
+    }
+
+    filename = "data/submission.csv";
+    ofstream outputFile (filename);
+    outputFile << "PassengerId,Survived" << endl;
+    for (int i=0; i<test_size; ++i) {
+        if (nn[depth-1].x[i][0] > nn[depth-1].x[i][1]) {
+            outputFile << passengers[i].PassengerId << ",1" << endl;
+        } else {
+            outputFile << passengers[i].PassengerId << ",0" << endl;
+        }   
+    }
+    
+}
 
 int main() {
-
-    string filename = "data/train.csv"; // ファイル名を適切なものに変更
+    string filename = "data/train.csv";
     vector<passenger_t> passengers = readCSV(filename);
 
-    // データの確認（例として先頭の5人分を表示）
-    for (int i = 0; i < 50; ++i) {
-        cout << "PassengerId: " << passengers[i].PassengerId << ", "
-             << "Name: " << passengers[i].Name_first << ", "
-             << "Age: " << passengers[i].Age << ", "
-             << "Sex: " << passengers[i].Sex << ", "
-             << "Survived: " << passengers[i].Survived << endl;
-    }
     cout << "size is ";
     cout << passengers.size() << endl;
-    vvd data_x, data_y;
+    vvd data_x, data_t;
     missing_value(passengers);
-    normalization(train, valid, passengers);
+    normalization(data_x, data_t, passengers);
 
+    cout << "size is ";
+    cout << passengers.size() << endl;
 
-    return 0;
-
-    //data import
-    ////////////////////////////////////////////////////////////////
-    // vector<passenger_t> data = readCSV("data/train.csv");
-
-    // cout << data.size() << endl;
-    // return 0;
-    // vvd target_tmp = readCSV("data/.csv");
-    // vvd target;
-    // for (int i=0; i<target_tmp[0].size(); ++i) {
-    //     if (target_tmp[0][i] == 0) target.push_back({1, 0, 0});
-    //     else if (target_tmp[0][i] == 1) target.push_back({0, 1, 0});
-    //     else if (target_tmp[0][i] == 2) target.push_back({0, 0, 1});
-    // }
-    // cout << target.size() << ' ' << target[0].size() << endl;
-    ////////////////////////////////////////////////////////////////
-
-    // data = normalization(data);
-    /*
+    int data_size = data_x.size();
+    int train_size = data_size * 0.8;
+    int valid_size = data_size - train_size;
+    vvd train_x, train_t, valid_x, valid_t;
     
-    int train_size = 105, test_size = 45;
-    int all_size = train_size + test_size;
-    vvd train_x, train_t, test_x, test_t;
-    
-    vector<int> id(all_size/3);
-    for (int i=0; i<all_size/3; ++i) id[i] = i;
-
-    //data分布を保持しつつ，ランダムにtrain setとtest setに分類する
-    for (int i=0; i<3; ++i) {
-        vvd tmpX, tmpT;
-        for (int j=0; j<all_size/3; ++j) {
-            tmpX.push_back(data[i*(all_size/3)+j]);
-            tmpT.push_back(target[i*(all_size/3)+j]);
-        }
-        shuffle(id.begin(), id.end(), engine);
-        shuffle_VVD(tmpX, id);
-        shuffle_VVD(tmpT, id);
-        for (int j=0; j<all_size/3; ++j) {
-            if (j < train_size/3) {
-                train_x.push_back(tmpX[j]);
-                train_t.push_back(tmpT[j]);
-            } else {
-                test_x.push_back(tmpX[j]);
-                test_t.push_back(tmpT[j]);
-            }
+    vector<int> id(data_size);
+    for (int i=0; i<data_size; ++i) id[i] = i;
+    shuffle(id.begin(), id.end(), engine);
+    for (int i=0; i<data_size; ++i) {
+        if (i < train_size) {
+            train_x.push_back(data_x[i]);
+            train_t.push_back(data_t[i]);
+        } else {
+            valid_x.push_back(data_x[i]);
+            valid_t.push_back(data_t[i]);
         }
     }
     
- 
-    
-    // cout << "train_x" << endl;
-    // cout << train_x.size() << ' ' << train_x[0].size() << endl;
-    // matrix_show(train_x);
-    // cout << "train_t" << endl;
-    // cout << train_t.size() << ' ' << train_t[0].size() << endl;
-    // matrix_show(train_t);
-
-    // cout << "test_x" << endl;
-    // cout << test_x.size() << ' ' << test_x[0].size() << endl;
-    // matrix_show(test_x);
-    // cout << "test_t" << endl;
-    // cout << test_t.size() << ' ' << test_t[0].size() << endl;
-    // matrix_show(test_t);
-    
-    
-    double eta = 0.005, attenuation = 0.9;
-    int show_interval = 10;
+    double eta = 0.01, attenuation = 0.6;
+    int show_interval = 100;
     int learning_plan = 10;
-    int loop = 100;
-    int batch_size = 32; //<train_size
-    vector<int> nn_form = {4, 10, 3};
+    int loop = 1000;
+    int batch_size = 10; //<train_size
+    vector<int> nn_form = {4, 32, 32, 32, 2};
+    // vector<int> nn_form = {4, 100, 200, 2};
+    
     int depth = nn_form.size()-1;
 
     vector<layer_t> nn(depth);
 
-    id.assign(train_size, 0);
-    for (int i=0; i<train_size; ++i) id[i] = i;
-    
     //Heの初期化
     for (int i=0; i<depth; ++i) {
         nn[i].w.assign(nn_form[i], vd(nn_form[i+1], 0));
@@ -202,21 +195,9 @@ int main() {
         make_initial_value(nn[i].b, 0, sqrt(2.0/nn_form[i]));
         nn[i].b = expansion_bias(nn[i].b, batch_size);
     }
-    
-    //初期のパラメータの表示
-    cout << "first parameters" << endl;
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
-    for (int i=0; i<depth; ++i) {
-        cout << "w " << i+1 << endl; 
-        matrix_show(nn[i].w);
-    }
-    for (int i=0; i<depth; ++i) {
-        cout << "b " << i+1 << endl;
-        matrix_show_b(nn[i].b);
-    }
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
+    id.assign(train_size, 0);
+    for (int i=0; i<train_size; ++i) id[i] = i;
+
     
     //learn
     for (int i=0; i<loop; ++i) {
@@ -225,11 +206,6 @@ int main() {
         shuffle(id.begin(), id.end(), engine);
         shuffle_VVD(train_x, id);
         shuffle_VVD(train_t, id);
-        // cout << "i = " << i << " shuffled data set" << endl;
-        // cout << "x train" << endl;
-        // matrix_show(train_x);
-        // cout << "t train" << endl;
-        // matrix_show(train_t);
         
         //全データから先頭batchi_sizeだけmini batchを取得
         vvd x0, t0;
@@ -237,38 +213,15 @@ int main() {
             x0.push_back(train_x[j]);
             t0.push_back(train_t[j]);
         }
-        // cout << "kaka" << endl;
-        // cout << x0.size() << endl;
-        // cout << t0.size() << endl;
-        // matrix_show(x0);
-        // matrix_show(t0);
-
-        // cout << "=========================================" << endl;
-        // cout << "i = " << i << " before forward propagation parameters" << endl;
-        // cout << "w" << endl;
-        // for (int i=0; i<depth; ++i) matrix_show(nn[i].w);
-        // cout << "b" << endl;
-        // for (int i=0; i<depth; ++i) matrix_show_b(nn[i].b);
-        // cout << "=========================================" << endl;
-        
 
         //forward propagation
         for (int k=0; k<depth; ++k) {
             if (k == 0) nn[k].a = matrix_add(matrix_multi(x0, nn[k].w), nn[k].b);
             else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
-            if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+            // if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+            if (k < depth-1) nn[k].x = hm_tanh(nn[k].a);
             else nn[k].x = hm_softmax(nn[k].a);
-
-            // cout << "i = " << i << ", in forward propagation x " << k << endl;
-            // matrix_show(nn[k].x);
         }
-        // cout << "size x" << endl;
-        // cout << nn[depth-1].x.size() << ' ' << nn[depth-1].x[0].size() << endl;
-        // matrix_show(nn[depth-1].x);
-        // cout << "T size " << t0.size() << " " << t0[0].size() << endl;
-        // matrix_show(t0);
-        // cout << i << " cross entropy ";
-        // cout << hm_cross_entropy(nn[depth-1].x, t0) << endl;
 
         //back propagation
         for (int k=depth-1; k>=0; --k) {
@@ -280,7 +233,8 @@ int main() {
                 nn[k].delta = matrix_adm_multi_tensor(r_fL_xk, r_hk_ak);
             } else {
                 vvd r_h_a;
-                r_h_a = calc_r_ReLU(nn[k].a);
+                // r_h_a = calc_r_ReLU(nn[k].a);
+                r_h_a = calc_r_tanh(nn[k].a);
                 nn[k].delta = matrix_adm_multi(r_h_a, matrix_multi(nn[k+1].delta, matrix_t(nn[k+1].w)));
             }
             nn[k].rb = calc_r_bias(nn[k].b, nn[k].delta);
@@ -295,6 +249,7 @@ int main() {
         }
         //学習率の更新
         if ((i+1) % learning_plan == 0) eta *= attenuation;
+        // if ((i+1) % learning_plan*10 == 0) eta = 0.01;
 
         //たまに性能の確認
         if (i % show_interval == 0) {
@@ -316,7 +271,8 @@ int main() {
     for (int k=0; k<depth; ++k) {
         if (k == 0) nn[k].a = matrix_add(matrix_multi(train_x, nn[k].w), nn[k].b);
         else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
-        if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+        // if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+        if (k < depth-1) nn[k].x = hm_tanh(nn[k].a);
         else nn[k].x = hm_softmax(nn[k].a);
     }
     cout << " cross entropy ";
@@ -326,37 +282,31 @@ int main() {
     for (int i=0; i<40; ++i) cout << "=";
     cout << endl;
 
-    // test set-------------------------------------
+    // valid set-------------------------------------
     for (int i=0; i<40; ++i) cout << "=";
     cout << endl;
-    cout << "test set" << endl;
+    cout << "valid set" << endl;
     for (int i=0; i<depth; ++i) {
-        nn[i].b = expansion_bias(nn[i].b, test_size);
+        nn[i].b = expansion_bias(nn[i].b, valid_size);
     }
-    
-    //test set は単に順伝播させて，正解率を見るだけだからシャッフルは必要ない
 
     //forward propagation
     for (int k=0; k<depth; ++k) {
-        if (k == 0) nn[k].a = matrix_add(matrix_multi(test_x, nn[k].w), nn[k].b);
+        if (k == 0) nn[k].a = matrix_add(matrix_multi(valid_x, nn[k].w), nn[k].b);
         else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
-        if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+        // if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+        if (k < depth-1) nn[k].x = hm_tanh(nn[k].a);
         else nn[k].x = hm_softmax(nn[k].a);
     }
     cout << " cross entropy ";
-    cout << hm_cross_entropy(nn[depth-1].x, test_t) << endl;
+    cout << hm_cross_entropy(nn[depth-1].x, valid_t) << endl;
     cout << "accuracy rate ";
-    cout << calc_accuracy_rate(nn[depth-1].x, test_t) << endl;
+    cout << calc_accuracy_rate(nn[depth-1].x, valid_t) << endl;
     for (int i=0; i<40; ++i) cout << "=";
     cout << endl;
-    // matrix_show(test_x);
-    // matrix_show(test_t);
-    // matrix_show(nn[depth-1].x);
 
-    //最後のパラメータの表示
-    */
-    
-    
+    //testset 
+    test_output(nn, depth);    
 }
 //  #######   ####    ####     #######
 //   ##   #    ##      ##       ##   #
@@ -405,6 +355,41 @@ vector<passenger_t> readCSV(string filename) {
     file.close();
     return passengers;
 }
+vector<passenger_t> readCSV_test(string filename) {
+    vector<passenger_t> passengers;
+    ifstream file(filename);
+
+    if (!file.is_open()) {
+        cout << "File not found." << endl;
+        return passengers;
+    }
+
+    string line;
+    getline(file, line); // ヘッダー行を読み飛ばす
+    while (getline(file, line)) {
+        vector<string> tokens = split(line, ',');
+        passenger_t passenger;
+
+        passenger.PassengerId = stoi(tokens[0]);
+        // passenger.Survived = stoi(tokens[1]);
+        passenger.Pclass = stoi(tokens[1]);
+        passenger.Name_first = tokens[2];
+        passenger.Name_second = tokens[3];
+        passenger.Sex = tokens[4];
+        passenger.Age = tokens[5].empty() ? -1 : stoi(tokens[5]);
+        passenger.SibSp = tokens[6].empty() ? -1 : stoi(tokens[6]);
+        passenger.Parch = tokens[7].empty() ? -1 : stoi(tokens[7]);
+        passenger.Ticket = tokens[8];
+        passenger.Fare = tokens[9].empty() ? -1 : stod(tokens[9]);
+        passenger.Cabin = tokens[10];
+        passenger.Embarked = tokens[11].empty() ? ' ' : tokens[11][0];
+
+        passengers.push_back(passenger);//欠損値は-1 or space
+    }
+
+    file.close();
+    return passengers;
+}
 
 vector<string> split(const string &s, char delimiter) {
     vector<string> tokens;
@@ -437,9 +422,9 @@ void missing_value(vector<passenger_t> &psg) {
     }
 }
 
-void normalization(vvd &x, vvd &y, vector<passenger_t> &psg) {
+void normalization(vvd &x, vvd &t, vector<passenger_t> &psg) {
     x.assign(0, vd(0));
-    y.assign(0, vd(0));
+    t.assign(0, vd(0));
     int n = psg.size();
     //正規化と特徴量エンジニアリング
     /*
@@ -479,13 +464,43 @@ void normalization(vvd &x, vvd &y, vector<passenger_t> &psg) {
 
     for (int i=0; i<n; ++i) {
         //教師ラベル
-        if (psg[i].Survived == 1) y.push_back({1, 0});
-        else y.push_back({0, 1});
+        if (psg[i].Survived == 1) t.push_back({1, 0});
+        else t.push_back({0, 1});
         //訓練インスタンス
         x.push_back({vec_Pclass[i], vec_Sex[i], vec_Age[i], vec_Fare[i]});
     }
 }
 
+void normalization_test(vvd &x, vector<passenger_t> &psg) {
+    x.assign(0, vd(0));
+    int n = psg.size();
+    vd vec_Pclass, vec_Sex, vec_Age, vec_Fare;
+    for (int i=0; i<n; ++i) {
+        vec_Pclass.push_back(psg[i].Pclass);
+        if (psg[i].Sex == "male") vec_Sex.push_back(0);
+        else vec_Sex.push_back(1);
+        vec_Age.push_back(psg[i].Age);
+        vec_Fare.push_back(psg[i].Fare);
+    }
+    double mx_Pclass, mn_Pclass, mx_Age, mn_Age, mx_Fare, mn_Fare;
+    mx_Pclass = *max_element(vec_Pclass.begin(), vec_Pclass.end());
+    mn_Pclass = *min_element(vec_Pclass.begin(), vec_Pclass.end());
+    mx_Age = *max_element(vec_Age.begin(), vec_Age.end());
+    mn_Age = *min_element(vec_Age.begin(), vec_Age.end());
+    mx_Fare = *max_element(vec_Fare.begin(), vec_Fare.end());
+    mn_Fare = *min_element(vec_Fare.begin(), vec_Fare.end());
+
+    for (int i=0; i<n; ++i) {
+        vec_Pclass[i] = (vec_Pclass[i] - mn_Pclass) / (mx_Pclass - mn_Pclass);
+        vec_Age[i] = (vec_Age[i] - mn_Age) / (mx_Age - mn_Age);
+        vec_Fare[i] = (vec_Fare[i] - mn_Fare) / (mx_Fare - mn_Fare);
+    }
+
+    for (int i=0; i<n; ++i) {
+        //訓練インスタンス
+        x.push_back({vec_Pclass[i], vec_Sex[i], vec_Age[i], vec_Fare[i]});
+    }
+}
 
 //  #######  ##   ##  ##   ##    ####   ######    ####     #####   ##   ##
 //   ##   #  ##   ##  ###  ##   ##  ##  # ## #     ##     ##   ##  ###  ##
@@ -555,7 +570,6 @@ void shuffle_VVD(vvd &v, vector<int> &id) {
     }
     v = tmp;
 }
-
 
 
 //  ##   ##    ##     ######   ######    ####    ##  ##
@@ -685,7 +699,7 @@ double gaussianDistribution (double mu, double sig) {
 double h_sigmoid(double x) {
     return 1/(1+exp(-x));
 }
-double h_tash(double x) {
+double h_tanh(double x) {
     return (exp(x)-exp(-x)) / (exp(x)+exp(-x));
 }
 double h_ReLU(double x) {
@@ -698,6 +712,16 @@ vvd hm_ReLU(vvd &x) {
     for (int i=0; i<n; ++i) {
         for (int j=0; j<m; ++j) {
             tmp[i][j] = h_ReLU(x[i][j]);
+        }
+    }
+    return tmp;
+}
+vvd hm_tanh(vvd &x) {
+    int n = x.size(), m = x[0].size();
+    vvd tmp(n, vd(m));
+    for (int i=0; i<n; ++i) {
+        for (int j=0; j<m; ++j) {
+            tmp[i][j] = h_tanh(x[i][j]);
         }
     }
     return tmp;
@@ -794,6 +818,16 @@ vvd calc_r_ReLU (vvd &a) {
     for (int s=0; s<n; ++s) {
         for (int j=0; j<m; ++j) {
             if (a[s][j] >= 0) tmp[s][j] = 1;
+        }
+    }
+    return tmp;
+}
+vvd calc_r_tanh(vvd &a) {
+    int n = a.size(), m = a[0].size();
+    vvd tmp(n, vd(m, 0));
+    for (int s=0; s<n; ++s) {
+        for (int j=0; j<m; ++j) {
+            tmp[s][j] = 4/(exp(-a[s][j]) + exp(a[s][j])) / (exp(-a[s][j]) + exp(a[s][j]));
         }
     }
     return tmp;

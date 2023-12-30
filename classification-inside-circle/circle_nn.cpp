@@ -33,6 +33,7 @@ vvd make_data(int n);
 void make_initial_value(vvd &table, double mu, double sig);
 double calc_accuracy_rate(vvd &y, vvd &t);
 void shuffle_VVD(vvd &v, vector<int> &id);
+void show_parameters(vector<layer_t> &nn, int depth);
 void outputfile(const vvd &output);
 void drawing_by_python(vector<layer_t> &nn, int depth);
 //MATRIX
@@ -102,18 +103,7 @@ int main() {
     
     //初期のパラメータの表示
     cout << "first parameters" << endl;
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
-    for (int i=0; i<depth; ++i) {
-        cout << "w " << i+1 << endl; 
-        matrix_show(nn[i].w);
-    }
-    for (int i=0; i<depth; ++i) {
-        cout << "b " << i+1 << endl;
-        matrix_show_b(nn[i].b);
-    }
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
+    show_parameters(nn, depth);
     
     //訓練セットの作成
     //前半半分は円の内側 後半半分は円の外側
@@ -235,18 +225,7 @@ int main() {
 
     //最後のパラメータの表示
     cout << "last parameters" << endl;
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
-    for (int i=0; i<depth; ++i) {
-        cout << "w " << i+1 << endl; 
-        matrix_show(nn[i].w);
-    }
-    for (int i=0; i<depth; ++i) {
-        cout << "b " << i+1 << endl;
-        matrix_show_b(nn[i].b);
-    }
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
+    show_parameters(nn, depth);
 
     //一旦csvに出力したのちpythonで描画してみる
     drawing_by_python(nn, depth);
@@ -322,6 +301,20 @@ void shuffle_VVD(vvd &v, vector<int> &id) {
     v = tmp;
 }
 
+void show_parameters(vector<layer_t> &nn, int depth) {
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+    for (int i=0; i<depth; ++i) {
+        cout << "w " << i+1 << endl; 
+        matrix_show(nn[i].w);
+    }
+    for (int i=0; i<depth; ++i) {
+        cout << "b " << i+1 << endl;
+        matrix_show_b(nn[i].b);
+    }
+    for (int i=0; i<40; ++i) cout << "=";
+    cout << endl;
+}
 //x, y, tを列挙
 void outputfile(const vvd &output) {
     int n = output.size(), m = output[0].size();
