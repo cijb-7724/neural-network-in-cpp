@@ -34,7 +34,7 @@ typedef struct {
     string Name_first;
     string Name_second;
     string Sex;
-    int Age;
+    double Age;
     int SibSp;
     int Parch;
     string Ticket;
@@ -195,9 +195,9 @@ int main() {
     int show_interval = 100;
     int learning_plan = 100;
     int loop = 1000;
-    int batch_size = 10; //<train_size
-    // vector<int> nn_form = {3, 30, 30, 30, 1};
-    vector<int> nn_form = {3, 100, 200, 1};
+    int batch_size = 100; //<train_size
+    vector<int> nn_form = {3, 30, 30, 30, 1};
+    // vector<int> nn_form = {3, 100, 200, 1};
     
     int depth = nn_form.size()-1;
 
@@ -242,17 +242,13 @@ int main() {
         //back propagation
         for (int k=depth-1; k>=0; --k) {
             if (k == depth-1) {
-                vvd r_fL_xk;
-                // vvvd r_hk_ak;
-                // r_fL_xk = calc_r_cross_entropy(nn[k].x, t0);
-                // r_hk_ak = calc_r_softmax(nn[k].x);
-                r_fL_xk = calc_r_mse(nn[k].x, t0);
+                vvd r_fL_xk = calc_r_mse(nn[k].x, t0);
                 vvd r_hk_ak = calc_r_identity(nn[k].a);
                 nn[k].delta = matrix_adm_multi(r_fL_xk, r_hk_ak);
             } else {
                 vvd r_h_a;
-                // r_h_a = calc_r_ReLU(nn[k].a);
-                r_h_a = calc_r_tanh(nn[k].a);
+                r_h_a = calc_r_ReLU(nn[k].a);
+                // r_h_a = calc_r_tanh(nn[k].a);
                 nn[k].delta = matrix_adm_multi(r_h_a, matrix_multi(nn[k+1].delta, matrix_t(nn[k+1].w)));
             }
             nn[k].rb = calc_r_bias(nn[k].b, nn[k].delta);
@@ -446,6 +442,46 @@ void missing_value(vector<passenger_t> &psg) {
     for (int i=0; i<n; ++i) {
         if (psg[i].Fare == -1) psg[i].Fare = fare[fare.size()/2];
     }
+}
+
+void complete_missing_values_age(vector<passenger_t> &psg, vector<layer_t> &nn) {
+    vvd x;
+    x.assign(0, vd(0));
+    int n = psg.size();
+
+    vd vec_Pclass, vec_Sex, vec_Age, vec_Fare;
+    for (int i=0; i<n; ++i) {
+        if (psg[i].Age != -1) continue;
+
+        vvd x0;
+        x0.push_back({psg[i].Pclass, psg[i].Sex, psg[i].Fare});
+    }
+    double mx_Pclass, mn_Pclass, mx_Age, mn_Age, mx_Fare, mn_Fare;
+    mx_Pclass = *max_element(vec_Pclass.begin(), vec_Pclass.end());
+    mn_Pclass = *min_element(vec_Pclass.begin(), vec_Pclass.end());
+    mx_Age = *max_element(vec_Age.begin(), vec_Age.end());
+    mn_Age = *min_element(vec_Age.begin(), vec_Age.end());
+    mx_Fare = *max_element(vec_Fare.begin(), vec_Fare.end());
+    mn_Fare = *min_element(vec_Fare.begin(), vec_Fare.end());
+
+    cout << "mx age, min age " << mx_Age << ' ' << mn_Age << endl; 
+    cout << vec_Age.size() << endl;
+    cout << count(vec_Age.begin(), vec_Age.end(), 0) << endl;
+
+    for (int i=0; i<vec_Age.size(); ++i) {
+        vec_Pclass[i] = (vec_Pclass[i] - mn_Pclass) / (mx_Pclass - mn_Pclass);
+        vec_Age[i] = (vec_Age[i] - mn_Age) / (mx_Age - mn_Age);
+        vec_Fare[i] = (vec_Fare[i] - mn_Fare) / (mx_Fare - mn_Fare);
+    }
+
+    cout << "mx age, min age " << mx_Age << ' ' << mn_Age << endl; 
+    cout << vec_Age.size() << endl;
+
+    for (int i=0; i<vec_Age.size(); ++i) {
+        //教師ラベル
+        t.push_back({vec_Age[i]});
+        //訓練インスタンス
+        x.push_back({vec_Pclass[i], vec_Sex[i], vec_Fare[i]});
 }
 
 void normalization(vvd &x, vvd &t, vector<passenger_t> &psg) {

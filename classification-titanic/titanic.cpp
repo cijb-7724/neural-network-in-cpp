@@ -31,7 +31,7 @@ typedef struct {
     string Name_first;
     string Name_second;
     string Sex;
-    int Age;
+    double Age;
     int SibSp;
     int Parch;
     string Ticket;
@@ -510,34 +510,7 @@ void normalization_test(vvd &x, vector<passenger_t> &psg) {
 //   ##      ##   ##  ##   ##   ##  ##    ##       ##     ##   ##  ##   ##
 //  ####      #####   ##   ##    ####    ####     ####     #####   ##   ##
 
-bool judge_term(double x, double y){ return (x*x + y*y < 9) ? true : false;}
-//条件を満たす点と満たさない点をn/2個ずつ作る
-vvd make_data(int n) {
-    vvd x;
-    x.assign(n, vd(2, 0));
-    int id = 0;
-    while(id < n/2) {
-        double a, b;
-        a = distCircle(engine);
-        b = distCircle(engine);
-        if (judge_term(a, b)) {
-            x[id][0] = a;
-            x[id][1] = b;
-            ++id;
-        }
-    }
-    while(id < n) {
-        double a, b;
-        a = distCircle(engine);
-        b = distCircle(engine);
-        if (!judge_term(a, b)) {
-            x[id][0] = a;
-            x[id][1] = b;
-            ++id;
-        }
-    }
-    return x;
-}
+
 void make_initial_value(vvd &table, double mu, double sig) {
     int n = table.size(), m = table[0].size();
     for (int i=0; i<n; ++i) {
@@ -749,7 +722,7 @@ double hm_cross_entropy(vvd &y, vvd &t) {
     double sum = 0;
     for (int i=0; i<n; ++i) {
         for (int j=0; j<m; ++j) {
-            // if (y[i][j] <= 0) y[i][j] = 1e-5;
+            if (y[i][j] <= 0) y[i][j] = 1e-5;
             if (t[i][j]) sum += t[i][j] * log(y[i][j]);
         }
     }
