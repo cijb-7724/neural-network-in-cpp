@@ -61,38 +61,6 @@ long long SEED = 0;//実行毎に同じ乱数生成
 mt19937 engine(SEED);
 uniform_real_distribution<> distCircle(-6, 6);
 
-
-// void outputfile(vvd &x) {
-//     int n = x.size(), m = x[0].size();
-//     string fname1 = "in.txt";
-//     string fname2 = "out.txt";
-//     ofstream outputFile (fname1);
-//     ofstream outputFile2 (fname2);
-    
-
-//     for (int i=0; i<n; ++i) {
-//         for (int j=0; j<m; ++j) {
-//             if (i < n/2) {
-//                 outputFile << x[i][j];
-//                 if (j != m-1) outputFile << " ";
-//             } else {
-//                 outputFile2 << x[i][j];
-//                 if (j != m-1) outputFile2 << " ";
-//             }
-            
-//         }
-//         if (i < n/2) {
-//             outputFile << endl;
-//         } else {
-//             outputFile2 << endl;
-//         }
-        
-//     } 
-// }
-// void outputTextFile2d(vvd &v, string s) {  
-// }
-
-
 //  ##   ##    ##      ####    ##   ##
 //  ### ###   ####      ##     ###  ##
 //  #######  ##  ##     ##     #### ##
@@ -146,7 +114,7 @@ int main() {
     cout << target.size() << ' ' << target[0].size() << endl;
     ////////////////////////////////////////////////////////////////
 
-    // data = normalization(data);
+    data = normalization(data);
 
     int train_size = 105, test_size = 45;
     int all_size = train_size + test_size;
@@ -196,12 +164,13 @@ int main() {
     // matrix_show(test_t);
     
     
-    double eta = 0.005, attenuation = 0.9;
+    double eta = 0.03, attenuation = 0.9;
     int show_interval = 10;
     int learning_plan = 10;
-    int loop = 100;
-    int batch_size = 32; //<train_size
-    vector<int> nn_form = {4, 10, 3};
+    int loop = 100;//100
+    int batch_size = 100; //<train_size
+    // vector<int> nn_form = {4, 10, 10, 3};
+    vector<int> nn_form = {4, 100, 100, 100, 100, 100, 3};
     int depth = nn_form.size()-1;
 
     vector<layer_t> nn(depth);
@@ -220,18 +189,18 @@ int main() {
     
     //初期のパラメータの表示
     cout << "first parameters" << endl;
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
-    for (int i=0; i<depth; ++i) {
-        cout << "w " << i+1 << endl; 
-        matrix_show(nn[i].w);
-    }
-    for (int i=0; i<depth; ++i) {
-        cout << "b " << i+1 << endl;
-        matrix_show_b(nn[i].b);
-    }
-    for (int i=0; i<40; ++i) cout << "=";
-    cout << endl;
+    // for (int i=0; i<40; ++i) cout << "=";
+    // cout << endl;
+    // for (int i=0; i<depth; ++i) {
+    //     cout << "w " << i+1 << endl; 
+    //     matrix_show(nn[i].w);
+    // }
+    // for (int i=0; i<depth; ++i) {
+    //     cout << "b " << i+1 << endl;
+    //     matrix_show_b(nn[i].b);
+    // }
+    // for (int i=0; i<40; ++i) cout << "=";
+    // cout << endl;
     
     //learn
     for (int i=0; i<loop; ++i) {
@@ -684,7 +653,7 @@ vvd calc_r_cross_entropy(vvd &x, vvd &t) {
                 if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
                 else tmp[s][j] += t[s][k] / (x[s][k]);
             }
-            // tmp[s][j] /= n;
+            tmp[s][j] /= n;
         }
     }
     return tmp;
