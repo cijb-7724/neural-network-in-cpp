@@ -166,11 +166,11 @@ int main() {
     
     double eta = 0.03, attenuation = 0.9;
     int show_interval = 10;
-    int learning_plan = 10;
-    int loop = 100;//100
+    int learning_plan = 50;//10
+    int loop = 500;//100
     int batch_size = 100; //<train_size
-    // vector<int> nn_form = {4, 10, 10, 3};
-    vector<int> nn_form = {4, 100, 100, 100, 100, 100, 3};
+    vector<int> nn_form = {4, 10, 10, 3};
+    // vector<int> nn_form = {4, 100, 100, 100, 100, 100, 3};
     int depth = nn_form.size()-1;
 
     vector<layer_t> nn(depth);
