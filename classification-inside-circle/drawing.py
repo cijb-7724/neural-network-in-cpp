@@ -28,7 +28,7 @@ labels = [point[2] for point in data]
 colors = ['blue' if label == 0.0 else 'orange' for label in labels]
 
 # 散布図をプロット
-plt.scatter(x_values, y_values, c=colors, s=20)
+plt.scatter(x_values, y_values, c=colors, s=1)
 
 # プロットの設定
 plt.xlabel('X')

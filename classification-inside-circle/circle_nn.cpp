@@ -103,7 +103,7 @@ int main() {
     
     //初期のパラメータの表示
     cout << "first parameters" << endl;
-    show_parameters(nn, depth);
+    // show_parameters(nn, depth);
     
     //訓練セットの作成
     //前半半分は円の内側 後半半分は円の外側
@@ -132,9 +132,6 @@ int main() {
             // if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
             if (k < depth-1) nn[k].x = hm_tanh(nn[k].a);
             else nn[k].x = hm_softmax(nn[k].a);
-
-            // cout << "i = " << i << ", in forward propagation x " << k << endl;
-            // matrix_show(nn[k].x);
         }
         
         //back propagation
@@ -146,9 +143,8 @@ int main() {
                 r_hk_ak = calc_r_softmax(nn[k].x);
                 nn[k].delta = matrix_adm_multi_tensor(r_fL_xk, r_hk_ak);
             } else {
-                vvd r_h_a;
-                // r_h_a = calc_r_ReLU(nn[k].a);
-                r_h_a = calc_r_tanh(nn[k].a);
+                // vvd r_h_a = calc_r_ReLU(nn[k].a);
+                vvd r_h_a = calc_r_tanh(nn[k].a);
                 nn[k].delta = matrix_adm_multi(r_h_a, matrix_multi(nn[k+1].delta, matrix_t(nn[k+1].w)));
             }
             nn[k].rb = calc_r_bias(nn[k].delta);
@@ -239,9 +235,9 @@ int main() {
 //   ##      ##   ##  ##   ##   ##  ##    ##       ##     ##   ##  ##   ##
 //  ####      #####   ##   ##    ####    ####     ####     #####   ##   ##
 
-bool judge_term(double x, double y){ return (x*x + y*y < 9) ? true : false;}
+// bool judge_term(double x, double y){ return (x*x + y*y < 9) ? true : false;}
 // bool judge_term(double x, double y) { return (x * y > 0 ? true : false);}//xor
-// bool judge_term(double x, double y) { return (y > -x) ? true : false;}//linear
+bool judge_term(double x, double y) { return (y > -x) ? true : false;}//linear
 //条件を満たす点と満たさない点をn/2個ずつ作る
 vvd make_data(int n) {
     vvd x;
@@ -536,7 +532,6 @@ double hm_cross_entropy(vvd &y, vvd &t) {
     double sum = 0;
     for (int i=0; i<n; ++i) {
         for (int j=0; j<m; ++j) {
-            if (y[i][j] <= 0) y[i][j] = 1e-5;
             if (t[i][j]) sum += t[i][j] * log(y[i][j]);
         }
     }
@@ -575,7 +570,7 @@ vvd calc_r_cross_entropy(vvd &x, vvd &t) {
         for (int j=0; j<m; ++j) {
             for (int k=0; k<m; ++k) {
                 if (j == k) tmp[s][j] -= t[s][j] / x[s][j];
-                else tmp[s][j] += t[s][k] / (x[s][k]);
+                else tmp[s][j] += t[s][k] / x[s][k];
             }
             tmp[s][j] /= n;
         }
@@ -623,7 +618,6 @@ vvd calc_r_tanh(vvd &a) {
 vvd calc_r_bias (vvd &delta) {
     int n = delta.size(), m = delta[0].size();
     vvd rb;
-    if (n != delta.size() || m != delta[0].size()) cout << "size is not match" << endl;
     rb.assign(1, vd(m, 0));
     for (int j=0; j<m; ++j) {
         for (int i=0; i<n; ++i) {

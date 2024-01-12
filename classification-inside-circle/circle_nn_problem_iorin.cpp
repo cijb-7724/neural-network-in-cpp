@@ -91,7 +91,7 @@ int main() {
 
     vector<int> id(n);
     for (int i=0; i<n; ++i) id[i] = i;
-    
+
     //Heの初期化
     for (int i=0; i<depth; ++i) {
         nn[i].w.assign(nn_form[i], vd(nn_form[i+1], 0));
@@ -100,18 +100,18 @@ int main() {
         make_initial_value(nn[i].b, 0, sqrt(2.0/nn_form[i]));
         nn[i].b = expansion_bias(nn[i].b, batch_size);
     }
-    
+
     //初期のパラメータの表示
     cout << "first parameters" << endl;
     show_parameters(nn, depth);
-    
+
     //訓練セットの作成
     //前半半分は円の内側 後半半分は円の外側
     x = make_data(n);
     //教師ラベルの作成 {1,0}内側 {0,1}外側
     for (int i=0; i<n/2; ++i) t.push_back({1, 0});//inside
     for (int i=0; i<n/2; ++i) t.push_back({0, 1});//outside
-    
+
     //learn
     for (int i=0; i<loop; ++i) {
         //mini batchの作成
@@ -127,12 +127,28 @@ int main() {
 
         //forward propagation
         for (int k=0; k<depth; ++k) {
-            //ここに書く
+            if(k==0) nn[0].a = matrix_add(matrix_multi(x0, nn[k].w),nn[k].b);
+            else     nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
+
+            if(k==depth - 1) nn[k].x = hm_softmax(nn[k].a);
+            else             nn[k].x = hm_ReLU(nn[k].a);
         }
 
         //back propagation
         for (int k=depth-1; k>=0; --k) {
-            //ここに書く
+            if (k == depth-1) {
+                vvd r_fL_xk;
+                vvvd r_hk_ak;
+                r_fL_xk = calc_r_cross_entropy(nn[k].x, t0);
+                r_hk_ak = calc_r_softmax(nn[k].x);
+                nn[k].delta = matrix_adm_multi_tensor(r_fL_xk, r_hk_ak);
+            } else {
+                vvd r_h_a = calc_r_ReLU(nn[k].a);
+                nn[k].delta = matrix_adm_multi(matrix_multi(nn[k+1].delta, matrix_t(nn[k+1].w)),r_h_a);
+            }
+            nn[k].rb = calc_r_bias(nn[k].delta);
+            if(k!=0) nn[k].rw = nn[k].rw = matrix_multi(matrix_t(nn[k-1].x), nn[k].delta);
+            else nn[k].rw = matrix_multi(matrix_t(x0), nn[k].delta);
         }
 
         //update parameters
@@ -184,7 +200,7 @@ int main() {
     t.assign(0, vd(0));
     for (int i=0; i<n/2; ++i) t.push_back({1, 0});
     for (int i=0; i<n/2; ++i) t.push_back({0, 1});
-    
+
     //test set は単に順伝播させて，正解率を見るだけだからシャッフルは必要ない
 
     //forward propagation
@@ -283,7 +299,7 @@ void show_parameters(vector<layer_t> &nn, int depth) {
     for (int i=0; i<40; ++i) cout << "=";
     cout << endl;
     for (int i=0; i<depth; ++i) {
-        cout << "w " << i+1 << endl; 
+        cout << "w " << i+1 << endl;
         matrix_show(nn[i].w);
     }
     for (int i=0; i<depth; ++i) {
@@ -293,7 +309,7 @@ void show_parameters(vector<layer_t> &nn, int depth) {
     for (int i=0; i<40; ++i) cout << "=";
     cout << endl;
 }
- 
+
 //x, y, tを列挙
 void outputfile(const vvd &output) {
     int n = output.size(), m = output[0].size();
@@ -306,7 +322,7 @@ void outputfile(const vvd &output) {
             if (j != m-1) outputFile << ", ";
         }
         outputFile << endl;
-    } 
+    }
 }
 void drawing_by_python(vector<layer_t> &nn, int depth) {
     vvd data;
@@ -320,8 +336,8 @@ void drawing_by_python(vector<layer_t> &nn, int depth) {
             for (int k=0; k<depth; ++k) {
                 if (k == 0) nn[k].a = matrix_add(matrix_multi(tmp, nn[k].w), nn[k].b);
                 else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
-                if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
-                // if (k < depth-1) nn[k].x = hm_tanh(nn[k].a);
+                // if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
+                if (k < depth-1) nn[k].x = hm_tanh(nn[k].a);
                 else nn[k].x = hm_softmax(nn[k].a);
             }
             if (nn[depth-1].x[0][0] > nn[depth-1].x[0][1]) {
@@ -483,14 +499,28 @@ vvd hm_ReLU(vvd &x) {
     return tmp;
 }
 vvd hm_tanh(vvd &x) {
-    //ここに書く　無視
+    //ここに書く無視
 }
 
 vvd hm_softmax(vvd &x) {
-    //ここに書く
+    int n = x.size(), m = x[0].size();
+    vvd tmp(n,vd(m));
+    for(int i=0; i<n; i++){
+        double denominator = 0, maxelm = *max_element(x[i].begin(), x[i].end());
+        for(int j=0; j<m; j++) denominator += exp(x[i][j] - maxelm);
+        for(int j=0; j<m; j++) tmp[i][j] = exp(x[i][j] - maxelm) / denominator;
+    }
+    return tmp;
 }
 double hm_cross_entropy(vvd &y, vvd &t) {
-    //ここに書く
+    int n = y.size(), m = y[0].size();
+    double tmp = 0;
+    for(int i=0; i<n; i++){
+        for(int j=0; j<m; j++){
+            tmp += t[i][j] * log(y[i][j]);
+        }
+    }
+    return -tmp/((double) n);
 }
 
 
@@ -519,24 +549,63 @@ vvd expansion_bias(vvd &b, int batch) {
 }
 
 vvd calc_r_cross_entropy(vvd &x, vvd &t) {
-    //ここに書く
+    int n = x.size(), m = x[0].size();
+    vvd tmp(n, vd(m, 0));
+    for(int i=0; i<n; i++){
+        for(int j=0; j<m; j++){
+            for(int k=0; k<m; k++){
+                int sign = 1;
+                if(j==k) sign=-1;
+                // tmp[i][k] += sign * t[i][k] / x[i][k];
+                tmp[i][j] += sign * t[i][k] / x[i][k];
+            }
+            tmp[i][j] /= (double) n;
+        }
+    }
+    return tmp;
 }
 //rx_k/ra_j
 //m class 分類
 //m次正方行列を返す
 vvvd calc_r_softmax(vvd &x) {
-    //ここに書く
+    int n = x.size(), m = x[0].size();
+    vvvd tmp(n, vvd(m, vd(m, 0)));
+    for(int i=0; i<n; i++){
+        for(int j=0; j<m; j++){
+            for(int k=0; k<m; k++){
+                int term = 0;
+                if(k==j) term++;
+                tmp[i][j][k] = x[i][j]*(term - x[i][k]);
+            }
+        }
+    }
+    return tmp;
 }
 
 vvd calc_r_ReLU (vvd &a) {
-    //ここに書く
+    int n = a.size(), m = a[0].size();
+    vvd tmp(n, vd(m, 0));
+    for(int i=0; i<n; i++){
+        for(int j=0; j<m; j++){
+            if(a[i][j]>=0)tmp[i][j]=1;
+        }
+    }
+    return tmp;
 }
 vvd calc_r_tanh(vvd &a) {
     //ここに書く 無視
 }
 
 vvd calc_r_bias (vvd &delta) {
-    //ここに書く
+    int n = delta.size(), m = delta[0].size();
+    vvd tmp(1, vd(m, 0));
+    for(int i=0; i<n; i++){
+        for(int j=0; j<m; j++){
+            tmp[0][j] += delta[i][j];
+        }
+    }
+    tmp = expansion_bias(tmp, n);
+    return tmp;
 }
 
 void updateWeights(vvd &w, vvd &rw, double eta) {
