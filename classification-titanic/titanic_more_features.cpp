@@ -175,13 +175,12 @@ int main() {
         }
     }
     
-    double eta = 0.03, attenuation = 0.8;
+    double eta = 0.03, attenuation = 0.3;
     int show_interval = 100;
     int learning_plan = 100;
-    int loop = 2000;
-    int batch_size = 200; //<train_size
+    int loop = 1000;
+    int batch_size = 100; //<train_size
     vector<int> nn_form = {7, 32, 32, 32, 2};
-    vector<int> nn_form = {7, 14, 28, 56, 40, 20, 40, 20, 10, 5, 2};
     
     int depth = nn_form.size()-1;
 

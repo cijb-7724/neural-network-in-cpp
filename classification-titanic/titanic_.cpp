@@ -133,9 +133,9 @@ int main() {
     double eta = 0.03, attenuation = 0.6;
     int show_interval = 100;
     int learning_plan = 1000;
-    int loop = 10000;
+    int loop = 2000;
     int batch_size = 100; //<train_size
-    vector<int> nn_form = {4, 32, 32, 32, 2};
+    vector<int> nn_form = {1, 32, 32, 32, 2};
     // vector<int> nn_form = {4, 100, 200, 2};
     
     int depth = nn_form.size()-1;
@@ -395,26 +395,16 @@ void normalization(vvd &x, vvd &t, vector<passenger_t> &psg) {
     Embarked:港も今回は無視　いらない！
     Pclass, Sex, Age, Fare
     */
-    vd vec_Pclass, vec_Sex, vec_Age, vec_Fare;
+    vd vec_Age;
     for (int i=0; i<n; ++i) {
-        vec_Pclass.push_back(psg[i].Pclass);
-        if (psg[i].Sex == "male") vec_Sex.push_back(0);
-        else vec_Sex.push_back(1);
         vec_Age.push_back(psg[i].Age);
-        vec_Fare.push_back(psg[i].Fare);
     }
-    double mx_Pclass, mn_Pclass, mx_Age, mn_Age, mx_Fare, mn_Fare;
-    mx_Pclass = *max_element(vec_Pclass.begin(), vec_Pclass.end());
-    mn_Pclass = *min_element(vec_Pclass.begin(), vec_Pclass.end());
+    double mx_Age, mn_Age;
     mx_Age = *max_element(vec_Age.begin(), vec_Age.end());
     mn_Age = *min_element(vec_Age.begin(), vec_Age.end());
-    mx_Fare = *max_element(vec_Fare.begin(), vec_Fare.end());
-    mn_Fare = *min_element(vec_Fare.begin(), vec_Fare.end());
 
     for (int i=0; i<n; ++i) {
-        vec_Pclass[i] = (vec_Pclass[i] - mn_Pclass) / (mx_Pclass - mn_Pclass);
         vec_Age[i] = (vec_Age[i] - mn_Age) / (mx_Age - mn_Age);
-        vec_Fare[i] = (vec_Fare[i] - mn_Fare) / (mx_Fare - mn_Fare);
     }
 
     for (int i=0; i<n; ++i) {
@@ -422,38 +412,28 @@ void normalization(vvd &x, vvd &t, vector<passenger_t> &psg) {
         if (psg[i].Survived == 1) t.push_back({1, 0});
         else t.push_back({0, 1});
         //訓練インスタンス
-        x.push_back({vec_Pclass[i], vec_Sex[i], vec_Age[i], vec_Fare[i]});
+        x.push_back({vec_Age[i], 2, 3});
     }
 }
 
 void normalization_test(vvd &x, vector<passenger_t> &psg) {
     x.assign(0, vd(0));
     int n = psg.size();
-    vd vec_Pclass, vec_Sex, vec_Age, vec_Fare;
+    vd vec_Age;
     for (int i=0; i<n; ++i) {
-        vec_Pclass.push_back(psg[i].Pclass);
-        if (psg[i].Sex == "male") vec_Sex.push_back(0);
-        else vec_Sex.push_back(1);
         vec_Age.push_back(psg[i].Age);
-        vec_Fare.push_back(psg[i].Fare);
     }
-    double mx_Pclass, mn_Pclass, mx_Age, mn_Age, mx_Fare, mn_Fare;
-    mx_Pclass = *max_element(vec_Pclass.begin(), vec_Pclass.end());
-    mn_Pclass = *min_element(vec_Pclass.begin(), vec_Pclass.end());
+    double mx_Age, mn_Age;
     mx_Age = *max_element(vec_Age.begin(), vec_Age.end());
     mn_Age = *min_element(vec_Age.begin(), vec_Age.end());
-    mx_Fare = *max_element(vec_Fare.begin(), vec_Fare.end());
-    mn_Fare = *min_element(vec_Fare.begin(), vec_Fare.end());
 
     for (int i=0; i<n; ++i) {
-        vec_Pclass[i] = (vec_Pclass[i] - mn_Pclass) / (mx_Pclass - mn_Pclass);
         vec_Age[i] = (vec_Age[i] - mn_Age) / (mx_Age - mn_Age);
-        vec_Fare[i] = (vec_Fare[i] - mn_Fare) / (mx_Fare - mn_Fare);
     }
 
     for (int i=0; i<n; ++i) {
         //訓練インスタンス
-        x.push_back({vec_Pclass[i], vec_Sex[i], vec_Age[i], vec_Fare[i]});
+        x.push_back({vec_Age[i]});
     }
 }
 void test_output(vector<layer_t> &nn, int depth) {
