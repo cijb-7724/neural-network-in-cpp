@@ -113,7 +113,7 @@ int main() {
     cout << passengers.size() << endl;
 
     int data_size = data_x.size();
-    int train_size = data_size * 0.8;
+    int train_size = data_size * 0.7;
     int valid_size = data_size - train_size;
     vvd train_x, train_t, valid_x, valid_t;
     
@@ -130,13 +130,13 @@ int main() {
         }
     }
     
-    double eta = 0.03, attenuation = 0.6;
+    double eta = 0.03, attenuation = 0.1;
     int show_interval = 100;
-    int learning_plan = 1000;
-    int loop = 10000;
-    int batch_size = 100; //<train_size
-    vector<int> nn_form = {4, 32, 32, 32, 2};
-    // vector<int> nn_form = {4, 100, 200, 2};
+    int learning_plan = 100;
+    int loop = 500;
+    int batch_size = 400; //<train_size
+    // vector<int> nn_form = {6, 100, 100, 2};
+    vector<int> nn_form = {7, 10, 10, 10, 10, 10, 10, 2};
     
     int depth = nn_form.size()-1;
 
@@ -375,6 +375,11 @@ void missing_value(vector<passenger_t> &psg) {
     for (int i=0; i<n; ++i) {
         if (psg[i].Fare == -1) psg[i].Fare = fare[fare.size()/2];
     }
+
+    vector<char> embarked;
+    for (int i=0; i<n; ++i) {
+        if (psg[i].Embarked == ' ') psg[i].Embarked = 'S';
+    }
 }
 
 void normalization(vvd &x, vvd &t, vector<passenger_t> &psg) {
@@ -387,8 +392,8 @@ void normalization(vvd &x, vvd &t, vector<passenger_t> &psg) {
     Name:名前は確認しないだろう　いらない！
     Sex:これはありそう　いる！
     Age:丈夫な体の人は寒くても生き残るだろう　いる！
-    SibSp:とっさにそこを考慮して優先してボートに乗せるか？　いらない！
-    Parch:とっさにそこを考慮して優先してボートに乗せるか？　いらない！
+    SibSp:とっさにそこを考慮して優先してボートに乗せるか？　いらない！add
+    Parch:とっさにそこを考慮して優先してボートに乗せるか？　いらない！add
     Ticket:チケットも確認されないだろう　いらない！
     Fare:金持ち権力出ちゃうかも　いる！
     Cabin:部屋も金持ちと相関あるだろうけど，欠損値が多すぎるから捨てる　いらない！
@@ -396,25 +401,38 @@ void normalization(vvd &x, vvd &t, vector<passenger_t> &psg) {
     Pclass, Sex, Age, Fare
     */
     vd vec_Pclass, vec_Sex, vec_Age, vec_Fare;
+    vd vec_SibSp, vec_Parch, vec_Emb;
     for (int i=0; i<n; ++i) {
         vec_Pclass.push_back(psg[i].Pclass);
         if (psg[i].Sex == "male") vec_Sex.push_back(0);
         else vec_Sex.push_back(1);
         vec_Age.push_back(psg[i].Age);
         vec_Fare.push_back(psg[i].Fare);
+        vec_SibSp.push_back(psg[i].SibSp);
+        vec_Parch.push_back(psg[i].Parch);
+        if (psg[i].Embarked == 'S') vec_Emb.push_back(1);
+        else if (psg[i].Embarked == 'C') vec_Emb.push_back(0);
+        else vec_Emb.push_back(-1);
     }
     double mx_Pclass, mn_Pclass, mx_Age, mn_Age, mx_Fare, mn_Fare;
+    double mx_SibSp, mn_SibSp, mx_Parch, mn_Parch;
     mx_Pclass = *max_element(vec_Pclass.begin(), vec_Pclass.end());
     mn_Pclass = *min_element(vec_Pclass.begin(), vec_Pclass.end());
     mx_Age = *max_element(vec_Age.begin(), vec_Age.end());
     mn_Age = *min_element(vec_Age.begin(), vec_Age.end());
     mx_Fare = *max_element(vec_Fare.begin(), vec_Fare.end());
     mn_Fare = *min_element(vec_Fare.begin(), vec_Fare.end());
+    mx_SibSp = *max_element(vec_SibSp.begin(), vec_SibSp.end());
+    mn_SibSp = *min_element(vec_SibSp.begin(), vec_SibSp.end());
+    mx_Parch = *max_element(vec_Parch.begin(), vec_Parch.end());
+    mn_Parch = *min_element(vec_Parch.begin(), vec_Parch.end());
 
     for (int i=0; i<n; ++i) {
         vec_Pclass[i] = (vec_Pclass[i] - mn_Pclass) / (mx_Pclass - mn_Pclass);
         vec_Age[i] = (vec_Age[i] - mn_Age) / (mx_Age - mn_Age);
         vec_Fare[i] = (vec_Fare[i] - mn_Fare) / (mx_Fare - mn_Fare);
+        vec_SibSp[i] = (vec_SibSp[i] - mn_SibSp) / (mx_SibSp - mn_SibSp);
+        vec_Parch[i] = (vec_Parch[i] - mn_Parch) / (mx_Parch - mn_Parch);
     }
 
     for (int i=0; i<n; ++i) {
@@ -422,7 +440,7 @@ void normalization(vvd &x, vvd &t, vector<passenger_t> &psg) {
         if (psg[i].Survived == 1) t.push_back({1, 0});
         else t.push_back({0, 1});
         //訓練インスタンス
-        x.push_back({vec_Pclass[i], vec_Sex[i], vec_Age[i], vec_Fare[i]});
+        x.push_back({vec_Pclass[i], vec_Sex[i], vec_Age[i], vec_Fare[i], vec_SibSp[i], vec_Parch[i], vec_Emb[i]});
     }
 }
 
@@ -430,30 +448,44 @@ void normalization_test(vvd &x, vector<passenger_t> &psg) {
     x.assign(0, vd(0));
     int n = psg.size();
     vd vec_Pclass, vec_Sex, vec_Age, vec_Fare;
+    vd vec_SibSp, vec_Parch, vec_Emb;
     for (int i=0; i<n; ++i) {
         vec_Pclass.push_back(psg[i].Pclass);
         if (psg[i].Sex == "male") vec_Sex.push_back(0);
         else vec_Sex.push_back(1);
         vec_Age.push_back(psg[i].Age);
         vec_Fare.push_back(psg[i].Fare);
+        vec_SibSp.push_back(psg[i].SibSp);
+        vec_Parch.push_back(psg[i].Parch);
+        if (psg[i].Embarked == 'S') vec_Emb.push_back(1);
+        else if (psg[i].Embarked == 'C') vec_Emb.push_back(0);
+        else vec_Emb.push_back(-1);
     }
+
     double mx_Pclass, mn_Pclass, mx_Age, mn_Age, mx_Fare, mn_Fare;
+    double mx_SibSp, mn_SibSp, mx_Parch, mn_Parch;
     mx_Pclass = *max_element(vec_Pclass.begin(), vec_Pclass.end());
     mn_Pclass = *min_element(vec_Pclass.begin(), vec_Pclass.end());
     mx_Age = *max_element(vec_Age.begin(), vec_Age.end());
     mn_Age = *min_element(vec_Age.begin(), vec_Age.end());
     mx_Fare = *max_element(vec_Fare.begin(), vec_Fare.end());
     mn_Fare = *min_element(vec_Fare.begin(), vec_Fare.end());
+    mx_SibSp = *max_element(vec_SibSp.begin(), vec_SibSp.end());
+    mn_SibSp = *min_element(vec_SibSp.begin(), vec_SibSp.end());
+    mx_Parch = *max_element(vec_Parch.begin(), vec_Parch.end());
+    mn_Parch = *min_element(vec_Parch.begin(), vec_Parch.end());
 
     for (int i=0; i<n; ++i) {
         vec_Pclass[i] = (vec_Pclass[i] - mn_Pclass) / (mx_Pclass - mn_Pclass);
         vec_Age[i] = (vec_Age[i] - mn_Age) / (mx_Age - mn_Age);
         vec_Fare[i] = (vec_Fare[i] - mn_Fare) / (mx_Fare - mn_Fare);
+        vec_SibSp[i] = (vec_SibSp[i] - mn_SibSp) / (mx_SibSp - mn_SibSp);
+        vec_Parch[i] = (vec_Parch[i] - mn_Parch) / (mx_Parch - mn_Parch);
     }
 
     for (int i=0; i<n; ++i) {
         //訓練インスタンス
-        x.push_back({vec_Pclass[i], vec_Sex[i], vec_Age[i], vec_Fare[i]});
+        x.push_back({vec_Pclass[i], vec_Sex[i], vec_Age[i], vec_Fare[i], vec_SibSp[i], vec_Parch[i], vec_Emb[i]});
     }
 }
 void test_output(vector<layer_t> &nn, int depth) {

@@ -412,7 +412,7 @@ void normalization(vvd &x, vvd &t, vector<passenger_t> &psg) {
         if (psg[i].Survived == 1) t.push_back({1, 0});
         else t.push_back({0, 1});
         //訓練インスタンス
-        x.push_back({vec_Age[i], 2, 3});
+        x.push_back({vec_Age[i]});
     }
 }
 
