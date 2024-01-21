@@ -93,7 +93,7 @@ vvd normalization(const vvd & data) {
         double mn = *min_element(tmp.begin(), tmp.end());
         double mx = *max_element(tmp.begin(), tmp.end());
         for (int i=0; i<n; ++i) {
-            ret[i][j] = (tmp[i] - mn) / (mx - mn);//0~1
+            ret[i][j] = (data[i][j] - ((mx+mn)/2)) / ((mx - mn)/2);
         }
     }
     return ret;
@@ -152,13 +152,13 @@ int main() {
 
     
     
-    double eta = 0.03, attenuation = 0.9;
-    int show_interval = 10;
-    int learning_plan = 50;//10
-    int loop = 500;//100
+    double eta = 3, attenuation = 0.9;
+    int show_interval = 100;
+    int learning_plan = 100;
+    int loop = 1000;
     int batch_size = 100; //<train_size
-    // vector<int> nn_form = {4, 10, 10, 3};
-    vector<int> nn_form = {4, 100, 100, 100, 100, 100, 3};
+    vector<int> nn_form = {4, 10, 10, 3};
+    // vector<int> nn_form = {4, 100, 100, 100, 100, 100, 3};
     int depth = nn_form.size()-1;
 
     vector<layer_t> nn(depth);
@@ -197,11 +197,7 @@ int main() {
         shuffle(id.begin(), id.end(), engine);
         shuffle_VVD(train_x, id);
         shuffle_VVD(train_t, id);
-        // cout << "i = " << i << " shuffled data set" << endl;
-        // cout << "x train" << endl;
-        // matrix_show(train_x);
-        // cout << "t train" << endl;
-        // matrix_show(train_t);
+
         
         //全データから先頭batchi_sizeだけmini batchを取得
         vvd x0, t0;
@@ -209,11 +205,7 @@ int main() {
             x0.push_back(train_x[j]);
             t0.push_back(train_t[j]);
         }
-        // cout << "kaka" << endl;
-        // cout << x0.size() << endl;
-        // cout << t0.size() << endl;
-        // matrix_show(x0);
-        // matrix_show(t0);
+  
 
         // cout << "=========================================" << endl;
         // cout << "i = " << i << " before forward propagation parameters" << endl;
@@ -230,17 +222,7 @@ int main() {
             else nn[k].a = matrix_add(matrix_multi(nn[k-1].x, nn[k].w), nn[k].b);
             if (k < depth-1) nn[k].x = hm_ReLU(nn[k].a);
             else nn[k].x = hm_softmax(nn[k].a);
-
-            // cout << "i = " << i << ", in forward propagation x " << k << endl;
-            // matrix_show(nn[k].x);
         }
-        // cout << "size x" << endl;
-        // cout << nn[depth-1].x.size() << ' ' << nn[depth-1].x[0].size() << endl;
-        // matrix_show(nn[depth-1].x);
-        // cout << "T size " << t0.size() << " " << t0[0].size() << endl;
-        // matrix_show(t0);
-        // cout << i << " cross entropy ";
-        // cout << hm_cross_entropy(nn[depth-1].x, t0) << endl;
 
         //back propagation
         for (int k=depth-1; k>=0; --k) {
@@ -321,9 +303,6 @@ int main() {
     cout << calc_accuracy_rate(nn[depth-1].x, test_t) << endl;
     for (int i=0; i<40; ++i) cout << "=";
     cout << endl;
-    // matrix_show(test_x);
-    // matrix_show(test_t);
-    // matrix_show(nn[depth-1].x);
 
     //最後のパラメータの表示
     // cout << "last parameters" << endl;
