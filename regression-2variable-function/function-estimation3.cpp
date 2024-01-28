@@ -67,10 +67,10 @@ uniform_real_distribution<> distCircle(-10, 10);
 int main() {
     vvd x, t;
     double eta = 0.03, attenuation = 0.9;
-    int n = 1000;
+    int n = 10000;
     int show_interval = 1000;
     int learning_plan = 1000;
-    int loop = 20000;
+    int loop = 4000;
     int batch_size = 30;
     vector<int> nn_form = {2, 6, 12, 8, 1};
     // vector<int> nn_form = {2, 4, 6, 8, 6, 1};
