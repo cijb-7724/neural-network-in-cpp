@@ -237,7 +237,8 @@ int main() {
 
 // bool judge_term(double x, double y){ return (x*x + y*y < 9) ? true : false;}
 // bool judge_term(double x, double y) { return (x * y > 0 ? true : false);}//xor
-bool judge_term(double x, double y) { return (y > -x) ? true : false;}//linear
+// bool judge_term(double x, double y) { return (y > -x) ? true : false;}//linear
+bool judge_term(double x, double y) { return (y > x*x ? true : false);}//sqare
 //条件を満たす点と満たさない点をn/2個ずつ作る
 vvd make_data(int n) {
     vvd x;

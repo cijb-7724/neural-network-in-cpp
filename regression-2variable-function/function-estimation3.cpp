@@ -66,7 +66,7 @@ uniform_real_distribution<> distCircle(-10, 10);
 
 int main() {
     vvd x, t;
-    double eta = 0.03, attenuation = 0.9;
+    double eta = 0.03, attenuation = 0.7;
     int n = 10000;
     int show_interval = 1000;
     int learning_plan = 1000;
