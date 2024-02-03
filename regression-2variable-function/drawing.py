@@ -20,8 +20,8 @@ points = read_csv_to_2d_array(file_name)
 
 def func(x, y):
     return np.sin(np.sqrt(x**2 + y**2)) - 4*np.cos(y/3) + np.log10(1 + (x + y)**4)
-    return 3*np.sin(np.sqrt(x**2+y**2)) + (x-5)**2/30 + (y+5)**2/30
-    return 3*np.sin(np.sqrt(x**2 + y**2)/2)
+    #return 3*np.sin(np.sqrt(x**2+y**2)) + (x-5)**2/30 + (y+5)**2/30
+    #return 3*np.sin(np.sqrt(x**2 + y**2)/2)
 
 # グリッドの作成
 x = np.linspace(-10, 10, 100)
